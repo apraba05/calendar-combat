@@ -5,6 +5,8 @@ import { VERDICT_PROMPT } from '@/lib/prompts';
 import { broadcastToChat } from '@/lib/chatBroadcast';
 import { getCreateEventUrl } from '@/lib/google';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest, { params }: { params: { fightId: string } }) {
   const fight = getFightStore().get(params.fightId);
   if (!fight) return NextResponse.json({ error: 'Not found' }, { status: 404 });
