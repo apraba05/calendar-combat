@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFightStore } from '@/lib/fightStore';
+import { getFight, setFight } from '@/lib/fightStore';
 import { generateJson } from '@/lib/gemini';
 import { TAPE_PROMPT } from '@/lib/prompts';
 import { getCalendarData } from '@/lib/google';
 
 export async function POST(req: NextRequest, { params }: { params: { fightId: string } }) {
-  const fight = getFightStore().get(params.fightId);
+  const fight = getFight(params.fightId);
   if (!fight || !fight.opponent) {
     return NextResponse.json({ error: 'Fight not ready' }, { status: 400 });
   }
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
     tapeJson.opponentCard.rawEvents = calB;
     
     fight.tapeData = tapeJson;
-    getFightStore().set(fight.id, fight);
+    setFight(fight.id, fight);
     return NextResponse.json(tapeJson);
   }
 

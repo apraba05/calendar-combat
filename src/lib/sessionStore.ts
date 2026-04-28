@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 export interface Session {
   id: string;
   email: string;
@@ -6,12 +9,27 @@ export interface Session {
   tokens: any;
 }
 
-declare global {
-  var sessionStore: Map<string, Session> | undefined;
-}
+const dbPath = path.join(process.cwd(), 'sessionStore.json');
 
-if (!globalThis.sessionStore) {
-  globalThis.sessionStore = new Map<string, Session>();
-}
+const readDb = (): Map<string, Session> => {
+  try {
+    if (fs.existsSync(dbPath)) {
+      const data = fs.readFileSync(dbPath, 'utf-8');
+      return new Map(Object.entries(JSON.parse(data)));
+    }
+  } catch (e) {}
+  return new Map<string, Session>();
+};
 
-export const getSessionStore = () => globalThis.sessionStore!;
+const writeDb = (map: Map<string, Session>) => {
+  fs.writeFileSync(dbPath, JSON.stringify(Object.fromEntries(map)));
+};
+
+export const getSessionStore = () => ({
+  get: (id: string) => readDb().get(id),
+  set: (id: string, session: Session) => {
+    const map = readDb();
+    map.set(id, session);
+    writeDb(map);
+  }
+});

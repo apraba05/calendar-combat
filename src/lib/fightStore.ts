@@ -1,19 +1,31 @@
 import { FightState } from '@/types';
+import fs from 'fs';
+import path from 'path';
 
-declare global {
-  var fightStore: Map<string, FightState> | undefined;
-}
+const dbPath = path.join(process.cwd(), 'fightStore.json');
 
-if (!globalThis.fightStore) {
-  globalThis.fightStore = new Map<string, FightState>();
-}
+const readDb = (): Map<string, FightState> => {
+  try {
+    if (fs.existsSync(dbPath)) {
+      const data = fs.readFileSync(dbPath, 'utf-8');
+      return new Map(Object.entries(JSON.parse(data)));
+    }
+  } catch (e) {}
+  return new Map<string, FightState>();
+};
 
-export const getFightStore = () => globalThis.fightStore!;
+const writeDb = (map: Map<string, FightState>) => {
+  fs.writeFileSync(dbPath, JSON.stringify(Object.fromEntries(map)));
+};
+
+export const getFightStore = () => readDb();
 
 export const getFight = (id: string): FightState | undefined => {
-  return getFightStore().get(id);
+  return readDb().get(id);
 };
 
 export const setFight = (id: string, state: FightState) => {
-  getFightStore().set(id, state);
+  const map = readDb();
+  map.set(id, state);
+  writeDb(map);
 };

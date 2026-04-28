@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFightStore } from '@/lib/fightStore';
+import { getFight, setFight } from '@/lib/fightStore';
 import { pusherServer } from '@/lib/pusher';
 import { broadcastToChat } from '@/lib/chatBroadcast';
 import { getManagerPrompt, getICPrompt, COMMENTATOR_PROMPT } from '@/lib/prompts';
@@ -11,11 +11,11 @@ export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest, { params }: { params: { fightId: string } }) {
-  const fight = getFightStore().get(params.fightId);
+  const fight = getFight(params.fightId);
   if (!fight || !fight.tapeData) return NextResponse.json({ error: 'Fight not ready' }, { status: 400 });
 
   fight.readyCount += 1;
-  getFightStore().set(fight.id, fight);
+  setFight(fight.id, fight);
 
   if (fight.readyCount < 2) {
     return NextResponse.json({ waiting: true });
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
   }
 
   fight.status = 'arena';
-  getFightStore().set(fight.id, fight);
+  setFight(fight.id, fight);
 
   const startMsg = `🥊 NEW FIGHT: ${fight.tapeData.challengerCard.archetype} vs ${fight.tapeData.opponentCard.archetype}\nSubject: ${fight.config.subject}\nDuration: ${fight.config.durationMinutes}m\nUrgency: ${fight.config.urgency}`;
   broadcastToChat(startMsg, "Fight Commenced", "Calendar Combat");
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
     }
 
     fight.status = 'verdict';
-    getFightStore().set(fight.id, fight);
+    setFight(fight.id, fight);
     if (pusherServer) pusherServer.trigger(`fight-${fight.id}`, 'verdict-ready', {});
   };
 

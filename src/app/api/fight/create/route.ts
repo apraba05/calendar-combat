@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionStore } from '@/lib/sessionStore';
-import { getFightStore } from '@/lib/fightStore';
+import { getFightStore, setFight } from '@/lib/fightStore';
 import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest) {
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const fightId = randomUUID().substring(0, 8); // Short ID for shareability
 
-  getFightStore().set(fightId, {
+  setFight(fightId, {
     id: fightId,
     challenger: session,
     config: {

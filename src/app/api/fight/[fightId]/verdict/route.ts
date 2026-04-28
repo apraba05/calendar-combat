@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFightStore } from '@/lib/fightStore';
+import { getFight, setFight } from '@/lib/fightStore';
 import { generateJson } from '@/lib/gemini';
 import { VERDICT_PROMPT } from '@/lib/prompts';
 import { broadcastToChat } from '@/lib/chatBroadcast';
@@ -8,7 +8,7 @@ import { getCreateEventUrl } from '@/lib/google';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest, { params }: { params: { fightId: string } }) {
-  const fight = getFightStore().get(params.fightId);
+  const fight = getFight(params.fightId);
   if (!fight) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   if (fight.verdictData) return NextResponse.json(fight.verdictData);
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest, { params }: { params: { fightId: str
   };
 
   fight.verdictData = verdict;
-  getFightStore().set(fight.id, fight);
+  setFight(fight.id, fight);
 
   if (meetingTime && fight.opponent) {
     const url = getCreateEventUrl(fight.config.subject, meetingTime, fight.config.durationMinutes, [fight.challenger.email, fight.opponent.email]);

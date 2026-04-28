@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionStore } from '@/lib/sessionStore';
-import { getFightStore } from '@/lib/fightStore';
+import { getFightStore, getFight, setFight } from '@/lib/fightStore';
 import { pusherServer } from '@/lib/pusher';
 
 export async function POST(req: NextRequest, { params }: { params: { fightId: string } }) {
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
   if (!session) return NextResponse.json({ error: 'Session expired' }, { status: 401 });
 
   const fightId = params.fightId;
-  const fight = getFightStore().get(fightId);
+  const fight = getFight(fightId);
   if (!fight) return NextResponse.json({ error: 'Fight not found' }, { status: 404 });
 
   if (fight.challenger.email === session.email) {
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
 
   fight.opponent = session;
   fight.status = 'tape';
-  getFightStore().set(fightId, fight);
+  setFight(fightId, fight);
 
   // Notify challenger via Pusher that opponent joined
   if (pusherServer) {
