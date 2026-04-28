@@ -18,7 +18,7 @@ export default function Home() {
         <div className="flex-1 bg-surface-container border-4 border-red-600 p-8 flex flex-col gap-6 shadow-[10px_10px_0px_#000]">
           <h2 className="font-h2-stadium text-white italic text-3xl">ISSUE CHALLENGE</h2>
           <p className="text-outline font-body-main">Connect your Google Calendar and send a fight link to a colleague.</p>
-          <button onClick={() => router.push('/fight/new')} className="mt-auto bg-primary text-black font-black text-xl py-4 uppercase italic hover:bg-white transition-all shadow-md skew-x-[-4deg]">
+          <button onClick={() => window.location.href = '/api/auth/google?action=login'} className="mt-auto bg-primary text-black font-black text-xl py-4 uppercase italic hover:bg-white transition-all shadow-md skew-x-[-4deg]">
             CHALLENGE A COLLEAGUE
           </button>
         </div>
