@@ -8,9 +8,13 @@ export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const { matchupId, agentA: aId, agentB: bId } = await req.json();
-  const agentA = FIGHTERS.find(p => p.id === aId) || FIGHTERS[0];
-  const agentB = FIGHTERS.find(p => p.id === bId) || FIGHTERS[1];
+  const { matchupId, agentA, agentB } = await req.json();
+
+  // Pre-initialize store state to allow pendingInstructions before first turn
+  const store = getStore();
+  if (!store.has(matchupId)) {
+    store.set(matchupId, { matchupId, agentAId: agentA.id, agentBId: agentB.id, messages: [], status: 'ongoing' });
+  }
 
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const model = 'gemini-2.5-flash';
@@ -32,7 +36,16 @@ export async function POST(req: NextRequest) {
         const opponent = role === 'agentA' ? agentB : agentA;
         const isA = role === 'agentA';
         
-        const systemInstruction = generateAgentPrompt(agent, opponent, isA);
+        let extraContext = '';
+        const store = getStore();
+        const state = store.get(matchupId);
+        if (isA && state?.pendingInstruction) {
+          extraContext = `[COACH'S NOTE — RECEIVED MID-FIGHT]: "${state.pendingInstruction}". Incorporate this into your strategy on your next message without breaking character or quoting the coach directly.\n\n`;
+          state.pendingInstruction = undefined;
+          store.set(matchupId, state);
+        }
+        
+        const systemInstruction = generateAgentPrompt(agent, opponent, isA) + '\n\n' + extraContext;
         
         const historyText = chatHistory.length > 0 
           ? chatHistory.map(m => `${m.role === 'agentA' ? agentA.name : (m.role === 'agentB' ? agentB.name : 'Commentator')}: ${m.text}`).join('\n')
@@ -122,15 +135,13 @@ export async function POST(req: NextRequest) {
           turns++;
         }
 
-        // Save to global store
-        const store = getStore();
-        store.set(matchupId, {
-          matchupId,
-          agentAId: agentA.id,
-          agentBId: agentB.id,
-          messages: chatHistory as any,
-          status: 'finished'
-        });
+        // Save final state
+        const finalState = store.get(matchupId);
+        if (finalState) {
+          finalState.status = 'finished';
+          finalState.messages = chatHistory as any;
+          store.set(matchupId, finalState);
+        }
 
         sendEvent('verdict_ready', { matchupId });
         

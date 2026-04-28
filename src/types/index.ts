@@ -1,39 +1,57 @@
-export interface FighterCard {
+export interface User {
   id: string;
+  email: string;
   name: string;
-  archetype: string;
-  avatarUrl: string;
-  fightRecord: string;
-  boutName: string;
-  stats: {
-    stat1Label: string;
-    stat1Value: string;
+  avatar: string;
+  tokens?: {
+    access_token: string;
+    refresh_token?: string;
+    expiry_date?: number;
   };
-  calendar: string;
-  preferences: string[];
-  style: string;
 }
 
-export type MessageRole = 'agentA' | 'agentB' | 'commentator';
-
-export interface CombatMessage {
+export interface CalendarEvent {
   id: string;
-  role: MessageRole;
+  summary: string;
+  start: Date;
+  end: Date;
+  isRecurring: boolean;
+  attendeesCount: number;
+}
+
+export interface FightConfig {
+  subject: string;
+  durationMinutes: number;
+  urgency: 'this_week' | 'next_two_weeks' | 'flexible';
+  description: string;
+}
+
+export interface FighterCard {
+  role: 'MANAGER' | 'IC';
+  archetype: string;
+  record: string;
+  calendarEntries: string[]; // 5 dramatized entries
+  signatureMoves: string[]; // 3 signature moves
+  rawEvents?: CalendarEvent[]; // Hidden from opponent
+}
+
+export interface TapeData {
+  challengerCard: FighterCard;
+  opponentCard: FighterCard;
+  rationale: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'MANAGER' | 'IC' | 'COMMENTATOR';
   text: string;
   timestamp: string;
-}
-
-export interface FightState {
-  matchupId: string;
-  agentAId: string;
-  agentBId: string;
-  messages: CombatMessage[];
-  status: 'ongoing' | 'finished';
-  verdictData?: VerdictData;
+  subtext?: string;
 }
 
 export interface VerdictData {
-  winner: string;
+  winnerRole: 'MANAGER' | 'IC' | 'DRAW';
+  winnerName: string;
   stats: {
     persistence: number;
     passiveAggression: number;
@@ -42,10 +60,21 @@ export interface VerdictData {
   };
   savageQuote: string;
   meetingDetails: {
-    title: string;
     date: string;
     time: string;
-    location: string;
+    durationMinutes: number;
     status: string;
   };
+}
+
+export interface FightState {
+  id: string;
+  challenger: User;
+  opponent?: User;
+  config: FightConfig;
+  status: 'waiting' | 'tape' | 'arena' | 'verdict';
+  tapeData?: TapeData;
+  transcript: ChatMessage[];
+  verdictData?: VerdictData;
+  readyCount: number; // for syncing transitions (e.g. both click 'ENTER ARENA')
 }

@@ -1,29 +1,36 @@
 # Calendar Combat
 
-Welcome to Calendar Combat! Two AI agents fight for their human's calendar, streamed live with play-by-play commentary.
+Calendar Combat is a hackathon project that turns the mundane reality of corporate scheduling into an automated, high-stakes pay-per-view blood sport. Two real users connect their Google Calendars, and their AI agents negotiate a meeting time live in a boxing-match arena, broadcasting play-by-play to Google Chat.
+
+## Features
+- **Real Calendar Data**: Uses Google OAuth 2.0 to read real events and validate agent proposals against actual availability.
+- **Pusher Multiplayer**: Real-time server-to-client streaming so both users see the fight unfold synchronously.
+- **Google Chat Broadcast**: Fire-and-forget webhook integration posts formatted cards to a Chat Space.
+- **Gemini Autonomous Loop**: A background orchestrator runs the agents in a tight loop.
 
 ## Setup Instructions
 
-1. Install dependencies:
-   ```bash
+1. **Install Dependencies**
+   \`\`\`bash
    npm install
-   ```
+   \`\`\`
 
-2. Add your Gemini API Key:
-   Create a `.env.local` file in the root of the project and add your API key:
-   ```env
-   GEMINI_API_KEY=your_api_key_here
-   ```
+2. **Environment Variables**
+   Copy `.env.local` and fill in the missing keys:
+   
+   - **Pusher**: Create an app at pusher.com. Fill in `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, and the cluster.
+   - **Google Cloud**: Create an OAuth 2.0 Client ID for Web Applications. 
+     - Add `http://localhost:3000/api/auth/google/callback` as an authorized redirect URI.
+     - Fill in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+   - **Google Chat**: Go to a Chat space > Apps & Integrations > Manage webhooks. Create one and paste the URL into `GOOGLE_CHAT_WEBHOOK_URL`.
+   - **Gemini API**: Get a key from Google AI Studio and put it in `GEMINI_API_KEY`.
 
-3. Run the development server:
-   ```bash
+3. **Run Locally**
+   \`\`\`bash
    npm run dev
-   ```
+   \`\`\`
 
-4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## 3 Visual/UX Flourishes Implemented for the Demo
-
-1. **The Match Bell Start & End**: The UI utilizes an animated `lucide-react` Bell that drops in, dims the lights, and shakes violently with a "DING DING DING" overlay at the start and end of the match. This immerses users immediately into the boxing aesthetic.
-2. **Commentary Ticker Tape**: A dedicated "LIVE" ticker bar at the bottom of the screen with a pulsing red recording dot. It uses `framer-motion` to smoothly slide new dramatic commentary in and out, feeling exactly like an ESPN or WWE broadcast lower-third.
-3. **Dynamic Active Streaming Ring**: When an agent is currently "speaking" (i.e., streaming text), their agent card at the top of the screen scales up slightly, pulses, and gets a glowing ring. This naturally draws the eye to who holds the floor without confusing the viewer during the fast-paced SSE streams.
+## Architecture Notes
+- **No Database**: We use in-memory `Map` objects (`fightStore` and `sessionStore`) for hackathon speed. **Server restarts will wipe active fights.**
+- **Demo Mode**: If Google Auth is difficult to set up during the hackathon, set `DEMO_MODE="true"` in `.env.local`. This will bypass calendar fetching and inject fake availability for testing the arena loop.
+- **Vercel Deployment**: To deploy to Vercel, ensure you configure the environment variables in the Vercel dashboard and update the `GOOGLE_REDIRECT_URI` to your Vercel domain. Note that Vercel serverless functions have timeouts, so `maxDuration` is set to 300 on the `/start` route.
