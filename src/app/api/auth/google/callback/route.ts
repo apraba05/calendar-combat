@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const state = JSON.parse(Buffer.from(stateStr, 'base64').toString('ascii'));
-    const tokens = await getTokens(code);
+    const tokens = await getTokens(code, req);
     const userInfo = await getUserInfo(tokens);
 
     const sessionId = randomUUID();

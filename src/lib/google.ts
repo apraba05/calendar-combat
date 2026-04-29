@@ -2,13 +2,15 @@ import { google } from 'googleapis';
 import { addDays } from 'date-fns';
 import { CalendarEvent } from '@/types';
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
 
-export const getAuthUrl = (state: string) => {
+export const getAuthUrl = (state: string, req: any) => {
+  const origin = req.headers.get('origin') || req.nextUrl.origin;
+  const redirectUri = `${origin}/api/auth/google/callback`;
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri
+  );
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'],
@@ -16,12 +18,24 @@ export const getAuthUrl = (state: string) => {
   });
 };
 
-export const getTokens = async (code: string) => {
+export const getTokens = async (code: string, req: any) => {
+  const origin = req.headers.get('origin') || req.nextUrl.origin;
+  const redirectUri = `${origin}/api/auth/google/callback`;
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri
+  );
   const { tokens } = await oauth2Client.getToken(code);
   return tokens;
 };
 
 export const getUserInfo = async (tokens: any) => {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    "" // doesn't matter for userinfo
+  );
   oauth2Client.setCredentials(tokens);
   const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
   const { data } = await oauth2.userinfo.get();
@@ -33,6 +47,11 @@ export const getCalendarData = async (tokens: any): Promise<CalendarEvent[]> => 
     return []; // We will inject fake data directly in the route if demo mode is on
   }
   
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    ""
+  );
   oauth2Client.setCredentials(tokens);
   const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
   

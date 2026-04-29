@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   const state = Buffer.from(JSON.stringify({ action, fightId })).toString('base64');
-  const url = getAuthUrl(state);
+  const url = getAuthUrl(state, req);
   
   return NextResponse.redirect(url);
 }
