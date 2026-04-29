@@ -1,19 +1,13 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const model = 'gemini-2.5-flash';
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const modelName = 'gemini-2.5-flash';
 
 export const generateJson = async (prompt: string): Promise<any> => {
   try {
-    const res = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        temperature: 0.7,
-        responseMimeType: 'application/json'
-      }
-    });
-    return JSON.parse(res.text || '{}');
+    const model = genAI.getGenerativeModel({ model: modelName, generationConfig: { responseMimeType: 'application/json', temperature: 0.7 } });
+    const result = await model.generateContent(prompt);
+    return JSON.parse(result.response.text() || '{}');
   } catch (e) {
     console.error("Gemini JSON Generation Error:", e);
     return null;
@@ -22,39 +16,31 @@ export const generateJson = async (prompt: string): Promise<any> => {
 
 export const generateText = async (prompt: string, history: string = ''): Promise<string> => {
   try {
+    const model = genAI.getGenerativeModel({ model: modelName });
     const fullPrompt = history ? `${history}\n\n${prompt}` : prompt;
-    const res = await ai.models.generateContent({
-      model,
-      contents: fullPrompt,
-      config: { temperature: 0.8 }
-    });
-    return res.text || '';
+    const result = await model.generateContent(fullPrompt);
+    return result.response.text();
   } catch (e) {
     console.error("Gemini Text Generation Error:", e);
-    return '';
+    return "The model refused to speak.";
   }
 };
 
-// Stream helper for when we need to push chunks to Pusher
-export const streamText = async (prompt: string, history: string = '', onChunk: (chunk: string) => void): Promise<string> => {
+export const streamText = async (prompt: string, history: string = '', onChunk: (text: string) => void): Promise<string> => {
   try {
+    const model = genAI.getGenerativeModel({ model: modelName });
     const fullPrompt = history ? `${history}\n\n${prompt}` : prompt;
-    const stream = await ai.models.generateContentStream({
-      model,
-      contents: fullPrompt,
-      config: { temperature: 0.8 }
-    });
-    
+    const result = await model.generateContentStream(fullPrompt);
     let fullText = '';
-    for await (const chunk of stream) {
-      if (chunk.text) {
-        fullText += chunk.text;
-        onChunk(chunk.text);
-      }
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      fullText += chunkText;
+      onChunk(chunkText);
     }
     return fullText;
   } catch (e) {
-    console.error("Gemini Stream Error:", e);
-    return '';
+    console.error("Gemini Streaming Error:", e);
+    onChunk("[Streaming interrupted]");
+    return "[Streaming interrupted]";
   }
-}
+};
