@@ -21,8 +21,8 @@ export default function RootLayout({
           <nav className="hidden md:flex gap-8 items-center">
             <a className="text-white hover:text-red-500 transition-colors" href="/">MATCHUPS</a>
             <a className="text-amber-400 border-b-4 border-amber-400 pb-1" href="/">THE ARENA</a>
-            <a className="text-white hover:text-red-500 transition-colors" href="#">RANKINGS</a>
-            <a className="text-white hover:text-red-500 transition-colors" href="#">PPV REPLAYS</a>
+            <a className="text-white hover:text-red-500 transition-colors" href="/">RANKINGS</a>
+            <a className="text-white hover:text-red-500 transition-colors" href="/">PPV REPLAYS</a>
           </nav>
           <div className="flex items-center gap-4">
             <span className="material-symbols-outlined text-white hover:bg-red-600 hover:text-white transition-all duration-75 p-2 cursor-pointer">notifications_active</span>
@@ -48,23 +48,23 @@ export default function RootLayout({
                 <span className="material-symbols-outlined">sports_kabaddi</span>
                 <span className="font-lexend font-bold uppercase">FIGHT CARD</span>
               </a>
-              <a className="text-slate-400 hover:text-white px-8 py-3 flex items-center gap-4 group hover:translate-x-2 transition-transform duration-150" href="#">
+              <a className="text-slate-400 hover:text-white px-8 py-3 flex items-center gap-4 group hover:translate-x-2 transition-transform duration-150" href="/">
                 <span className="material-symbols-outlined group-hover:text-red-500">fitness_center</span>
                 <span className="font-lexend font-bold uppercase">TRAINING CAMP</span>
               </a>
-              <a className="text-slate-400 hover:text-white px-8 py-3 flex items-center gap-4 group hover:translate-x-2 transition-transform duration-150" href="#">
+              <a className="text-slate-400 hover:text-white px-8 py-3 flex items-center gap-4 group hover:translate-x-2 transition-transform duration-150" href="/">
                 <span className="material-symbols-outlined group-hover:text-red-500">meeting_room</span>
                 <span className="font-lexend font-bold uppercase">LOCKER ROOM</span>
               </a>
-              <a className="text-slate-400 hover:text-white px-8 py-3 flex items-center gap-4 group hover:translate-x-2 transition-transform duration-150" href="#">
+              <a className="text-slate-400 hover:text-white px-8 py-3 flex items-center gap-4 group hover:translate-x-2 transition-transform duration-150" href="/">
                 <span className="material-symbols-outlined group-hover:text-red-500">emoji_events</span>
                 <span className="font-lexend font-bold uppercase">HALL OF FAME</span>
               </a>
             </nav>
             <div className="p-4">
-              <button className="w-full bg-transparent border-2 border-red-600 text-red-600 font-black py-4 hover:bg-red-600 hover:text-white transition-all uppercase italic tracking-widest">
+              <a href="/api/auth/google?action=login" className="block text-center w-full bg-transparent border-2 border-red-600 text-red-600 font-black py-4 hover:bg-red-600 hover:text-white transition-all uppercase italic tracking-widest">
                 NEW CHALLENGE
-              </button>
+              </a>
             </div>
           </aside>
 
