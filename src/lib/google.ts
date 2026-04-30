@@ -4,9 +4,9 @@ import { CalendarEvent } from '@/types';
 
 
 export const getAuthUrl = (state: string, req: any) => {
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-  const proto = req.headers.get('x-forwarded-proto') || 'http';
-  const origin = process.env.RENDER_EXTERNAL_URL || `${proto}://${host}`;
+  const origin = process.env.NODE_ENV === 'production' 
+    ? 'https://calendar-combat.onrender.com' 
+    : 'http://localhost:3000';
   const redirectUri = `${origin}/api/auth/google/callback`;
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -21,9 +21,9 @@ export const getAuthUrl = (state: string, req: any) => {
 };
 
 export const getTokens = async (code: string, req: any) => {
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-  const proto = req.headers.get('x-forwarded-proto') || 'http';
-  const origin = process.env.RENDER_EXTERNAL_URL || `${proto}://${host}`;
+  const origin = process.env.NODE_ENV === 'production' 
+    ? 'https://calendar-combat.onrender.com' 
+    : 'http://localhost:3000';
   const redirectUri = `${origin}/api/auth/google/callback`;
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
