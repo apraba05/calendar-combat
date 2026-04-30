@@ -10,8 +10,10 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code');
   const stateStr = searchParams.get('state');
 
+  const origin = process.env.NODE_ENV === 'production' ? 'https://calendar-combat.onrender.com' : 'http://localhost:3000';
+
   if (!code || !stateStr) {
-    return NextResponse.redirect(new URL('/', req.url));
+    return NextResponse.redirect(`${origin}/`);
   }
 
   try {
@@ -28,12 +30,13 @@ export async function GET(req: NextRequest) {
       tokens,
     });
 
-    const res = NextResponse.redirect(new URL(state.action === 'join' ? `/fight/${state.fightId}/join` : '/fight/new', req.url));
+    const redirectPath = state.action === 'join' ? `/fight/${state.fightId}/join` : '/fight/new';
+    const res = NextResponse.redirect(`${origin}${redirectPath}`);
     res.cookies.set('sessionId', sessionId, { path: '/', httpOnly: true });
     
     return res;
   } catch (e) {
     console.error("OAuth callback error", e);
-    return NextResponse.redirect(new URL('/?error=oauth_failed', req.url));
+    return NextResponse.redirect(`${origin}/?error=oauth_failed`);
   }
 }
