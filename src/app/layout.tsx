@@ -19,7 +19,8 @@ export default function RootLayout({
         <header className="bg-slate-950 dark:bg-black text-white font-lexend font-black uppercase italic tracking-tighter border-b-4 border-red-600 shadow-[0_10px_30px_-15px_rgba(255,0,51,0.5)] flex justify-between items-center px-8 py-4 w-full sticky top-0 z-50">
           <div className="text-3xl font-black text-white italic tracking-widest drop-shadow-[0_2px_0px_#FF0033]"><a href="/">CALENDAR COMBAT</a></div>
           <nav className="hidden md:flex gap-8 items-center">
-            <a className="text-amber-400 border-b-4 border-amber-400 pb-1" href="/">THE ARENA</a>
+            <a className="text-white hover:text-red-500 transition-colors" href="/rankings">RANKINGS</a>
+            <a className="text-white hover:text-red-500 transition-colors" href="/replays">PPV REPLAYS</a>
           </nav>
           <div className="flex items-center gap-4">
             <a href="/api/auth/google?action=login" className="bg-primary-container text-on-primary-container px-6 py-2 font-black skew-x-[-12deg] hover:bg-white hover:text-red-600 transition-all uppercase">NEW CHALLENGE</a>
@@ -42,6 +43,10 @@ export default function RootLayout({
               <a className="bg-red-600 text-white font-black -skew-x-6 mx-2 px-8 py-3 flex items-center gap-4 shadow-lg" href="/">
                 <span className="material-symbols-outlined">sports_kabaddi</span>
                 <span className="font-lexend font-bold uppercase">FIGHT CARD</span>
+              </a>
+              <a className="text-slate-400 hover:text-white px-8 py-3 flex items-center gap-4 group hover:translate-x-2 transition-transform duration-150" href="/profile">
+                <span className="material-symbols-outlined group-hover:text-red-500">fitness_center</span>
+                <span className="font-lexend font-bold uppercase">TRAINING CAMP</span>
               </a>
             </nav>
             <div className="p-4">

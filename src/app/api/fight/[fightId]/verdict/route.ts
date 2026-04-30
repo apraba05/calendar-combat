@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFight, setFight } from '@/lib/fightStore';
+import { addHistory } from '@/lib/historyStore';
 import { generateJson } from '@/lib/gemini';
 import { VERDICT_PROMPT } from '@/lib/prompts';
 import { broadcastToChat } from '@/lib/chatBroadcast';
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: { fightId: str
 
   fight.verdictData = verdict;
   setFight(fight.id, fight);
+  addHistory(fight);
 
   if (meetingTime && fight.opponent) {
     const url = getCreateEventUrl(fight.config.subject, meetingTime, fight.config.durationMinutes, [fight.challenger.email, fight.opponent.email]);
