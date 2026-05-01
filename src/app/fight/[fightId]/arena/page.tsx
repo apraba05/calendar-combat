@@ -176,7 +176,9 @@ export default function Arena({ params }: { params: { fightId: string } }) {
 
     channel.bind('end-turn', (data: any) => {
       setCurrentSpeaker(null);
-      if (data.role === 'COMMENTATOR') {
+      if (data.role !== 'COMMENTATOR') {
+        setMessages(prev => prev.map(m => m.id === data.id ? { ...m, text: data.text || m.text } : m));
+      } else {
         const parts = msgBuffer.split('\n');
         setCommentaryLines(prev => [{
           timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}),

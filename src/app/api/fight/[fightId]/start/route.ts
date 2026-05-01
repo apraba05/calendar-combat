@@ -19,6 +19,27 @@ const PERSONA_LABEL: Record<string, string> = {
   intern: 'INTERN',
 };
 
+const DEGRADED_TEXT = 'Unable to continue the argument at this moment.';
+const isDegradedTurn = (text: string) => {
+  const t = String(text || '').trim().toLowerCase();
+  return !t || t === DEGRADED_TEXT.toLowerCase() || t.includes('streaming interrupted');
+};
+
+const buildEmergencyTurn = (
+  role: 'MANAGER' | 'IC',
+  roleLabel: string,
+  config: { subject: string; proposedTime?: string; durationMinutes: number }
+) => {
+  const proposed = config.proposedTime ? `${config.proposedTime}` : 'the next available slot today';
+  if (role === 'MANAGER') {
+    return `${roleLabel}: We still need to lock "${config.subject}" today. I propose ${proposed} for ${config.durationMinutes} minutes and we can keep this concise.`;
+  }
+  return `${roleLabel}: I can meet if we keep it to ${config.durationMinutes} minutes and protect existing priorities. If ${proposed} is clear, I can work with that.`;
+};
+
+const buildEmergencyCommentary = () =>
+  'THE CROWD ERUPTS AS BOTH CORNERS SCRAMBLE FOR A LAST-SECOND SLOT!\nSystem turbulence hit the exchange, but the negotiation stays alive and both sides are still forcing a concrete time.';
+
 export async function POST(req: NextRequest, { params }: { params: { fightId: string } }) {
   const fight = getFight(params.fightId);
   if (!fight || !fight.tapeData) return NextResponse.json({ error: 'Fight not ready' }, { status: 400 });
@@ -89,6 +110,10 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
             });
           }
         });
+
+        if (isDegradedTurn(agentText)) {
+          agentText = buildEmergencyTurn(currentRole, labelForRole(currentRole), fight.config);
+        }
         
         if (pusherServer) {
           pusherServer.trigger(`fight-${fight.id}`, 'end-turn', {
@@ -129,11 +154,12 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
         const commText = await streamText(commentatorPrompt, chatHistory, (chunk) => {
           if (pusherServer) pusherServer.trigger(`fight-${fight.id}`, 'chunk', { id: commMsgId, role: 'COMMENTATOR', text: chunk });
         });
+        const stableCommText = isDegradedTurn(commText) ? buildEmergencyCommentary() : commText;
         
-        if (pusherServer) pusherServer.trigger(`fight-${fight.id}`, 'end-turn', { id: commMsgId, role: 'COMMENTATOR', text: commText });
+        if (pusherServer) pusherServer.trigger(`fight-${fight.id}`, 'end-turn', { id: commMsgId, role: 'COMMENTATOR', text: stableCommText });
         
-        fight.transcript.push({ id: randomUUID(), role: 'COMMENTATOR', text: commText, timestamp: new Date().toISOString() });
-        const parts = commText.split('\n');
+        fight.transcript.push({ id: randomUUID(), role: 'COMMENTATOR', text: stableCommText, timestamp: new Date().toISOString() });
+        const parts = stableCommText.split('\n');
         broadcastToChat(parts[1] || parts[0], `🎙️ ${parts[0]}`);
       }
 
