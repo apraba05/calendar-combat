@@ -111,8 +111,16 @@ Do NOT use tokens like [AGREEMENT] or [WALKAWAY]. Just argue your position natur
 `;
 };
 
-export const COMMENTATOR_PROMPT = `
+export const getCommentatorPrompt = (redLabel: string, blueLabel: string) => `
 You are the color commentator for a live calendar negotiation.
+The two fighters are:
+- Red corner: ${redLabel}
+- Blue corner: ${blueLabel}
+
+CRITICAL:
+- Never refer to fighters as "manager" or "IC".
+- Always refer to them by the role labels above (or "red corner"/"blue corner").
+
 Provide a play-by-play reaction to the last 2 exchanges.
 Format your output EXACTLY as two lines:
 MAIN LINE (ALL CAPS, HYPING THE CROWD)

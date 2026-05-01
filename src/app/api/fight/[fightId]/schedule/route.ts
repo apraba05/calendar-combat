@@ -18,6 +18,27 @@ function getOAuthClient(tokens: any) {
   return oauth2Client;
 }
 
+function getGoogleErrorDetail(err: any): string {
+  return (
+    err?.response?.data?.error?.message ||
+    err?.response?.data?.error_description ||
+    err?.message ||
+    'Unknown Google API error'
+  );
+}
+
+function parseRequestedDateTime(value: string): Date | null {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+
+  // Accept "YYYY-MM-DD HH:mm" and "YYYY-MM-DDTHH:mm"
+  const normalized = trimmed.includes(' ') ? trimmed.replace(' ', 'T') : trimmed;
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
 export async function POST(req: NextRequest, { params }: { params: { fightId: string } }) {
   const sessionId = req.cookies.get('sessionId')?.value;
   if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -28,10 +49,13 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
   const fight = getFight(params.fightId);
   if (!fight) return NextResponse.json({ error: 'Fight not found' }, { status: 404 });
 
-  const { dateTime, durationMinutes, subject } = await req.json();
-
-  const startTime = new Date(dateTime);
-  const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+  const { dateTime, durationMinutes } = await req.json();
+  const startTime = parseRequestedDateTime(dateTime);
+  if (!startTime) {
+    return NextResponse.json({ error: 'Invalid meeting time' }, { status: 400 });
+  }
+  const duration = Number(durationMinutes || fight.config.durationMinutes || 30);
+  const endTime = new Date(startTime.getTime() + duration * 60000);
 
   // Collect attendee emails
   const attendees = [
@@ -41,13 +65,26 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
 
   try {
     const auth = getOAuthClient(session.tokens);
+    await auth.getAccessToken();
+    const refreshed = auth.credentials;
+    if (refreshed?.access_token && refreshed.access_token !== session.tokens?.access_token) {
+      getSessionStore().set(sessionId, {
+        ...session,
+        tokens: {
+          ...session.tokens,
+          access_token: refreshed.access_token,
+          refresh_token: refreshed.refresh_token ?? session.tokens?.refresh_token,
+          expiry_date: refreshed.expiry_date ?? session.tokens?.expiry_date,
+        },
+      });
+    }
     const calendar = google.calendar({ version: 'v3', auth });
 
     const event = await calendar.events.insert({
       calendarId: 'primary',
       sendUpdates: 'all', // sends email invites to all attendees
       requestBody: {
-        summary: subject || fight.config.subject,
+        summary: fight.config.subject,
         description: `Scheduled via Calendar Combat.\nFight ID: ${params.fightId}\nImportance: ${fight.config.importance || 'medium'}`,
         start: { dateTime: startTime.toISOString() },
         end: { dateTime: endTime.toISOString() },
@@ -55,9 +92,22 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
       },
     });
 
-    return NextResponse.json({ success: true, eventId: event.data.id, link: event.data.htmlLink });
+    return NextResponse.json({
+      success: true,
+      eventId: event.data.id,
+      link: event.data.htmlLink,
+      scheduledStart: startTime.toISOString(),
+      scheduledEnd: endTime.toISOString(),
+    });
   } catch (err: any) {
-    console.error('Calendar insert error:', err?.message);
-    return NextResponse.json({ error: 'Failed to create event', detail: err?.message }, { status: 500 });
+    const detail = getGoogleErrorDetail(err);
+    console.error('Calendar insert error:', detail);
+    if (/insufficient|scope|invalid.?grant|unauthorized/i.test(detail)) {
+      return NextResponse.json(
+        { error: 'Google authorization expired or missing calendar write permission. Please reconnect Google and try again.', detail },
+        { status: 401 }
+      );
+    }
+    return NextResponse.json({ error: 'Failed to create event', detail }, { status: 500 });
   }
 }

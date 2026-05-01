@@ -1,36 +1,81 @@
 # Calendar Combat
 
-Calendar Combat is a hackathon project that turns the mundane reality of corporate scheduling into an automated, high-stakes pay-per-view blood sport. Two real users connect their Google Calendars, and their AI agents negotiate a meeting time live in a boxing-match arena, broadcasting play-by-play to Google Chat.
+Calendar Combat is an AI-powered scheduling game where two people connect their real Google Calendars, pick a fighter persona, and watch autonomous agents negotiate a meeting time live in a "fight arena."
 
-## Features
-- **Real Calendar Data**: Uses Google OAuth 2.0 to read real events and validate agent proposals against actual availability.
-- **Pusher Multiplayer**: Real-time server-to-client streaming so both users see the fight unfold synchronously.
-- **Google Chat Broadcast**: Fire-and-forget webhook integration posts formatted cards to a Chat Space.
-- **Gemini Autonomous Loop**: A background orchestrator runs the agents in a tight loop.
+Built for hackathon judging: fast to demo, fun to watch, and grounded in real calendar constraints.
 
-## Setup Instructions
+## Why It Matters
 
-1. **Install Dependencies**
-   \`\`\`bash
-   npm install
-   \`\`\`
+- Scheduling is painful and high-frequency in real teams.
+- Most calendar tools are utility-first and low-engagement.
+- Calendar Combat turns negotiation into a transparent, replayable, AI-assisted decision flow.
 
-2. **Environment Variables**
-   Copy `.env.local` and fill in the missing keys:
-   
-   - **Pusher**: Create an app at pusher.com. Fill in `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, and the cluster.
-   - **Google Cloud**: Create an OAuth 2.0 Client ID for Web Applications. 
-     - Add `http://localhost:3000/api/auth/google/callback` as an authorized redirect URI.
-     - Fill in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-   - **Google Chat**: Go to a Chat space > Apps & Integrations > Manage webhooks. Create one and paste the URL into `GOOGLE_CHAT_WEBHOOK_URL`.
-   - **Gemini API**: Get a key from Google AI Studio and put it in `GEMINI_API_KEY`.
+## Core Features
 
-3. **Run Locally**
-   \`\`\`bash
-   npm run dev
-   \`\`\`
+- **Real calendar grounding**: proposals are generated and validated against actual Google Calendar availability.
+- **Live multiplayer arena**: both participants watch turn-by-turn streaming in real time.
+- **Persona-driven negotiation**: each player chooses a fighter persona (Intern, SWE, Team Lead, Director, Executive).
+- **Automated commentary and verdict**: AI commentator plus AI judge produce a final ruling.
+- **Google Chat updates**: optional broadcast of key fight moments to a Chat space.
 
-## Architecture Notes
-- **No Database**: We use in-memory `Map` objects (`fightStore` and `sessionStore`) for hackathon speed. **Server restarts will wipe active fights.**
-- **Demo Mode**: If Google Auth is difficult to set up during the hackathon, set `DEMO_MODE="true"` in `.env.local`. This will bypass calendar fetching and inject fake availability for testing the arena loop.
-- **Vercel Deployment**: To deploy to Vercel, ensure you configure the environment variables in the Vercel dashboard and update the `GOOGLE_REDIRECT_URI` to your Vercel domain. Note that Vercel serverless functions have timeouts, so `maxDuration` is set to 300 on the `/start` route.
+## Demo Flow (2-3 minutes)
+
+1. Challenger creates a fight and picks a fighter persona.
+2. Opponent joins via link, connects calendar, and picks their fighter.
+3. Both set priority constraints.
+4. Arena streams the negotiation live.
+5. Judge returns a verdict and recommended meeting outcome.
+
+## Tech Stack
+
+- **Frontend**: Next.js (App Router), React, Tailwind CSS
+- **Realtime**: Pusher
+- **AI**: Gemini API
+- **Integrations**: Google OAuth, Google Calendar, Google Chat webhooks
+- **Runtime storage**: lightweight file-backed/in-memory fight state for hackathon speed
+
+## Quick Start
+
+### 1) Install
+
+```bash
+npm install
+```
+
+### 2) Configure `.env.local`
+
+Required environment variables:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GEMINI_API_KEY`
+- `PUSHER_APP_ID`
+- `PUSHER_KEY`
+- `PUSHER_SECRET`
+- `PUSHER_CLUSTER`
+- `GOOGLE_CHAT_WEBHOOK_URL` (optional but recommended for demo impact)
+
+Google OAuth redirect URI for local development:
+
+- `http://localhost:3000/api/auth/google/callback`
+
+### 3) Run
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+## Hackathon Notes
+
+- **Demo mode**: set `DEMO_MODE=true` to bypass real calendar fetching and run deterministic demos.
+- **Persistence tradeoff**: state is optimized for speed of development, not long-term durability.
+- **Best experience**: run with two browser sessions for live head-to-head interaction.
+
+## What We Would Build Next
+
+- Persistent datastore + match history analytics
+- Team-level leaderboard and season rankings
+- More negotiation strategies and judge explainability
+- One-click deploy presets for event demos

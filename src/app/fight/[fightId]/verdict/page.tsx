@@ -53,7 +53,7 @@ export default function Verdict({ params }: { params: { fightId: string } }) {
         setEventLink(data.link || '');
         setDecision('scheduled');
       } else {
-        setScheduleError(data.error || 'Failed to create event.');
+        setScheduleError(data.detail ? `${data.error}: ${data.detail}` : (data.error || 'Failed to create event.'));
       }
     } catch {
       setScheduleError('Network error. Try again.');
@@ -75,7 +75,7 @@ export default function Verdict({ params }: { params: { fightId: string } }) {
       if (data.success) {
         setEmailSent(true);
       } else {
-        setEmailError(data.error || 'Failed to send email.');
+        setEmailError(data.detail ? `${data.error}: ${data.detail}` : (data.error || 'Failed to send email.'));
       }
     } catch {
       setEmailError('Network error. Try again.');

@@ -2,13 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFight, setFight } from '@/lib/fightStore';
 import { pusherServer } from '@/lib/pusher';
 import { broadcastToChat } from '@/lib/chatBroadcast';
-import { getManagerPrompt, getICPrompt, COMMENTATOR_PROMPT } from '@/lib/prompts';
+import { getManagerPrompt, getICPrompt, getCommentatorPrompt } from '@/lib/prompts';
 import { streamText } from '@/lib/gemini';
 import { validateProposal } from '@/lib/google';
 import { randomUUID } from 'crypto';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
+
+const PERSONA_LABEL: Record<string, string> = {
+  ic: 'INDIVIDUAL CONTRIBUTOR',
+  swe: 'SOFTWARE ENGINEER',
+  team_lead: 'TEAM LEAD',
+  director: 'DIRECTOR',
+  executive: 'EXECUTIVE',
+  intern: 'INTERN',
+};
 
 export async function POST(req: NextRequest, { params }: { params: { fightId: string } }) {
   const fight = getFight(params.fightId);
@@ -41,6 +50,9 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
     const icCard = isChallengerManager ? opponentCard : challengerCard;
     const managerPriorities = isChallengerManager ? fight.config.challengerPriorities : fight.config.opponentPriorities;
     const icPriorities = isChallengerManager ? fight.config.opponentPriorities : fight.config.challengerPriorities;
+    const managerLabel = PERSONA_LABEL[isChallengerManager ? (fight.config.challengerPersona || '') : (fight.config.opponentPersona || '')] || 'RED CORNER';
+    const icLabel = PERSONA_LABEL[isChallengerManager ? (fight.config.opponentPersona || '') : (fight.config.challengerPersona || '')] || 'BLUE CORNER';
+    const labelForRole = (role: 'MANAGER' | 'IC') => (role === 'MANAGER' ? managerLabel : icLabel);
 
     let chatHistory = '';
 
@@ -60,17 +72,31 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
         agentText = '';
         
         if (pusherServer) {
-          pusherServer.trigger(`fight-${fight.id}`, 'start-turn', { id: msgId, role: currentRole });
+          pusherServer.trigger(`fight-${fight.id}`, 'start-turn', {
+            id: msgId,
+            role: currentRole,
+            roleLabel: labelForRole(currentRole),
+          });
         }
         
         agentText = await streamText(prompt, chatHistory, (chunk) => {
           if (pusherServer) {
-            pusherServer.trigger(`fight-${fight.id}`, 'chunk', { id: msgId, role: currentRole, text: chunk });
+            pusherServer.trigger(`fight-${fight.id}`, 'chunk', {
+              id: msgId,
+              role: currentRole,
+              roleLabel: labelForRole(currentRole),
+              text: chunk,
+            });
           }
         });
         
         if (pusherServer) {
-          pusherServer.trigger(`fight-${fight.id}`, 'end-turn', { id: msgId, role: currentRole, text: agentText });
+          pusherServer.trigger(`fight-${fight.id}`, 'end-turn', {
+            id: msgId,
+            role: currentRole,
+            roleLabel: labelForRole(currentRole),
+            text: agentText,
+          });
         }
 
         const agreementMatch = agentText.match(/\[AGREEMENT:\s*(.+?),\s*(\d+)\]/);
@@ -79,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
           const isValid = validateProposal(time, fight.config.durationMinutes, managerCard.rawEvents || [], icCard.rawEvents || []);
           
           if (!isValid) {
-            chatHistory += `\n${currentRole}: ${agentText}\n[SYSTEM VALIDATION]: ERROR - CONFLICT DETECTED AT ${time}. You MUST propose a different time.`;
+            chatHistory += `\n${labelForRole(currentRole)}: ${agentText}\n[SYSTEM VALIDATION]: ERROR - CONFLICT DETECTED AT ${time}. You MUST propose a different time.`;
             continue; 
           }
         }
@@ -87,9 +113,9 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
         validTurn = true;
       }
 
-      chatHistory += `\n${currentRole}: ${agentText}`;
+      chatHistory += `\n${labelForRole(currentRole)}: ${agentText}`;
       fight.transcript.push({ id: randomUUID(), role: currentRole, text: agentText, timestamp: new Date().toISOString() });
-      broadcastToChat(`${currentRole === 'MANAGER' ? '🟥' : '🟦'} THE ${currentRole}: "${agentText.replace(/\[.*\]/g, '')}"`);
+      broadcastToChat(`${currentRole === 'MANAGER' ? '🟥' : '🟦'} ${labelForRole(currentRole)}: "${agentText.replace(/\[.*\]/g, '')}"`);
 
       if (agentText.includes('[AGREEMENT:') || agentText.includes('[WALKAWAY]')) {
         break;
@@ -99,7 +125,8 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
         const commMsgId = randomUUID();
         if (pusherServer) pusherServer.trigger(`fight-${fight.id}`, 'start-turn', { id: commMsgId, role: 'COMMENTATOR' });
         
-        const commText = await streamText(COMMENTATOR_PROMPT, chatHistory, (chunk) => {
+        const commentatorPrompt = getCommentatorPrompt(managerLabel, icLabel);
+        const commText = await streamText(commentatorPrompt, chatHistory, (chunk) => {
           if (pusherServer) pusherServer.trigger(`fight-${fight.id}`, 'chunk', { id: commMsgId, role: 'COMMENTATOR', text: chunk });
         });
         

@@ -18,6 +18,15 @@ function getOAuthClient(tokens: any) {
   return oauth2Client;
 }
 
+function getGoogleErrorDetail(err: any): string {
+  return (
+    err?.response?.data?.error?.message ||
+    err?.response?.data?.error_description ||
+    err?.message ||
+    'Unknown Google API error'
+  );
+}
+
 export async function POST(req: NextRequest, { params }: { params: { fightId: string } }) {
   const sessionId = req.cookies.get('sessionId')?.value;
   if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -35,6 +44,19 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
 
   try {
     const auth = getOAuthClient(session.tokens);
+    await auth.getAccessToken();
+    const refreshed = auth.credentials;
+    if (refreshed?.access_token && refreshed.access_token !== session.tokens?.access_token) {
+      getSessionStore().set(sessionId, {
+        ...session,
+        tokens: {
+          ...session.tokens,
+          access_token: refreshed.access_token,
+          refresh_token: refreshed.refresh_token ?? session.tokens?.refresh_token,
+          expiry_date: refreshed.expiry_date ?? session.tokens?.expiry_date,
+        },
+      });
+    }
     const gmail = google.gmail({ version: 'v1', auth });
 
     const subjectText = `Calendar Combat Verdict: ${fight.config.subject}`;
@@ -85,7 +107,14 @@ ${transcriptText}
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error('Gmail send error:', err?.message);
-    return NextResponse.json({ error: 'Failed to send email', detail: err?.message }, { status: 500 });
+    const detail = getGoogleErrorDetail(err);
+    console.error('Gmail send error:', detail);
+    if (/insufficient|scope|invalid.?grant|unauthorized/i.test(detail)) {
+      return NextResponse.json(
+        { error: 'Google authorization expired or missing Gmail permission. Please reconnect Google and try again.', detail },
+        { status: 401 }
+      );
+    }
+    return NextResponse.json({ error: 'Failed to send email', detail }, { status: 500 });
   }
 }
