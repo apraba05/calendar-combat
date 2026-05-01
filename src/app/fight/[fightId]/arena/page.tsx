@@ -216,7 +216,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
         // Only add messages whose IDs aren't already tracked by Pusher.
         setMessages(prev => {
           const existingIds = new Set(prev.map(m => m.id));
-          const incoming = nonCommentary.map((m: any) => ({
+          const incoming: ChatMessage[] = nonCommentary.map((m: any) => ({
             id: m.id,
             role: m.role,
             text: m.text,
@@ -225,10 +225,10 @@ export default function Arena({ params }: { params: { fightId: string } }) {
           // Update text for messages we already have (transcript is source of truth for completed turns),
           // and append any that arrived via transcript but were missed by Pusher.
           const updated = prev.map(m => {
-            const fromTranscript = incoming.find(t => t.id === m.id);
+            const fromTranscript = incoming.find((t: ChatMessage) => t.id === m.id);
             return fromTranscript ? { ...m, text: fromTranscript.text } : m;
           });
-          const missing = incoming.filter(t => !existingIds.has(t.id));
+          const missing = incoming.filter((t: ChatMessage) => !existingIds.has(t.id));
           return missing.length ? [...updated, ...missing] : updated;
         });
         setCommentaryLines(prev => {
