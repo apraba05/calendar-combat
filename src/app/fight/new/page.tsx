@@ -1,4 +1,4 @@
-// v2.3 — bot persona selector
+// v2.4 — updated personas, role verification, importance context
 "use client";
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -21,10 +21,11 @@ const DURATION_OPTIONS = [
 ];
 
 const PERSONA_OPTIONS = [
-  { value: 'ic', icon: '🧑‍💻', label: 'SOLO IC', desc: 'Individual contributor. Protecting deep work time.' },
-  { value: 'team_lead', icon: '👥', label: 'TEAM LEAD', desc: 'Manage a small team. Balance your calendar and your crew.' },
-  { value: 'director', icon: '🏢', label: 'DIRECTOR', desc: 'Run multiple teams. Your time is expensive.' },
-  { value: 'executive', icon: '🎯', label: 'EXECUTIVE', desc: 'C-Suite or VP. Your calendar is a scarce resource.' },
+  { value: 'intern', icon: '🎓', label: 'INTERN', desc: 'Just got here. What even is a calendar?', privileged: false },
+  { value: 'swe', icon: '💻', label: 'SOFTWARE ENGINEER', desc: 'Individual contributor. Protecting deep work time.', privileged: false },
+  { value: 'team_lead', icon: '👥', label: 'TEAM LEAD', desc: 'Manage a small team. Calendar is a puzzle.', privileged: false },
+  { value: 'director', icon: '🏢', label: 'DIRECTOR', desc: 'Multiple teams. Time is expensive.', privileged: true },
+  { value: 'executive', icon: '🎯', label: 'EXECUTIVE', desc: 'C-Suite / VP. Extremely limited availability.', privileged: true },
 ];
 
 export default function NewFight() {
@@ -33,15 +34,45 @@ export default function NewFight() {
   const [duration, setDuration] = useState('30');
   const [proposedTime, setProposedTime] = useState('');
   const [importance, setImportance] = useState('medium');
-  const [persona, setPersona] = useState('ic');
+  const [persona, setPersona] = useState('swe');
+  const [roleCode, setRoleCode] = useState('');
+  const [roleCodeError, setRoleCodeError] = useState('');
+  const [roleVerified, setRoleVerified] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [fightId, setFightId] = useState('');
   const [fightUrl, setFightUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const pusherRef = useRef<any>(null);
 
-  // Fix: get min datetime for the input (now)
   const minDateTime = new Date().toISOString().slice(0, 16);
+  const selectedPersona = PERSONA_OPTIONS.find(p => p.value === persona);
+
+  const handlePersonaChange = (val: string) => {
+    setPersona(val);
+    setRoleCode('');
+    setRoleCodeError('');
+    setRoleVerified(false);
+  };
+
+  const handleVerifyCode = async () => {
+    setVerifying(true);
+    setRoleCodeError('');
+    const res = await fetch('/api/verify-role', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ persona, code: roleCode }),
+    });
+    const data = await res.json();
+    if (data.valid) {
+      setRoleVerified(true);
+    } else {
+      setRoleCodeError('Invalid code. Contact your org admin.');
+    }
+    setVerifying(false);
+  };
+
+  const canSubmit = subject && (!selectedPersona?.privileged || roleVerified);
 
   const handleAuth = () => {
     window.location.href = '/api/auth/google?action=login';
@@ -54,12 +85,7 @@ export default function NewFight() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subject, durationMinutes: duration, urgency: 'this_week', description: '', proposedTime, importance, challengerPersona: persona })
     });
-    
-    if (res.status === 401) {
-      handleAuth();
-      return;
-    }
-
+    if (res.status === 401) { handleAuth(); return; }
     if (res.ok) {
       const { fightId: id } = await res.json();
       setFightId(id);
@@ -74,7 +100,6 @@ export default function NewFight() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Fix: Listen for opponent joining and auto-redirect challenger
   useEffect(() => {
     if (!fightId) return;
     const pusher = getPusherClient();
@@ -96,14 +121,12 @@ export default function NewFight() {
           <span className="material-symbols-outlined text-6xl text-primary animate-pulse mb-6">notifications_active</span>
           <h2 className="font-h1-heavy text-white text-4xl italic uppercase mb-2">WAITING FOR OPPONENT</h2>
           <p className="text-outline font-body-main mb-8">Send this link. The fight starts the moment they connect their calendar.</p>
-          
           <div className="bg-black p-4 border-2 border-outline-variant flex items-center gap-4 mb-8">
             <code className="text-tertiary flex-1 text-left select-all text-sm break-all">{fightUrl}</code>
             <button onClick={handleCopy} className="bg-surface-variant px-4 py-2 text-white font-bold uppercase hover:bg-white hover:text-black transition-colors shrink-0">
               {copied ? '✓ COPIED' : 'COPY'}
             </button>
           </div>
-          
           <div className="flex items-center justify-center gap-3 text-outline-variant text-sm animate-pulse">
             <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
             AUTO-REDIRECTING WHEN OPPONENT JOINS...
@@ -117,50 +140,90 @@ export default function NewFight() {
     <div className="min-h-[calc(100vh-80px)] canvas-bg flex flex-col items-center justify-center p-8">
       <div className="bg-surface-container border-4 border-primary p-12 max-w-2xl w-full shadow-[10px_10px_0px_#000]">
         <h1 className="font-lexend font-black text-4xl italic text-white uppercase mb-8">ISSUE A CHALLENGE</h1>
-        
+
         <div className="flex flex-col gap-6">
+          {/* Meeting Subject */}
           <div>
             <label className="font-label-caps text-primary text-xs uppercase mb-2 block">MEETING SUBJECT</label>
             <input type="text" value={subject} onChange={e => setSubject(e.target.value)} className="w-full bg-black border-2 border-outline-variant p-4 text-white focus:border-primary focus:outline-none font-body-bold" placeholder="E.g. Q3 Roadmap Sync" />
           </div>
 
+          {/* Proposed Time */}
           <div>
             <label className="font-label-caps text-primary text-xs uppercase mb-2 block">PROPOSED MEETING TIME</label>
-            <input 
-              type="datetime-local" 
-              value={proposedTime} 
+            <input
+              type="datetime-local"
+              value={proposedTime}
               min={minDateTime}
-              onChange={e => setProposedTime(e.target.value)} 
-              className="w-full bg-black border-2 border-outline-variant p-4 text-white focus:border-primary focus:outline-none font-body-bold" 
+              onChange={e => setProposedTime(e.target.value)}
+              className="w-full bg-black border-2 border-outline-variant p-4 text-white focus:border-primary focus:outline-none font-body-bold"
             />
-            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">YOUR BOT WILL OPEN WITH THIS TIME. IF THERE'S A CONFLICT, THE BATTLE BEGINS.</p>
+            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">YOUR BOT OPENS WITH THIS TIME. CALENDAR CONFLICTS ARE DETECTED AUTOMATICALLY.</p>
           </div>
-          
+
+          {/* Bot Persona */}
           <div>
-            <label className="font-label-caps text-primary text-xs uppercase mb-3 block">YOUR BOT PERSONA</label>
-            <div className="grid grid-cols-2 gap-3">
+            <label className="font-label-caps text-primary text-xs uppercase mb-3 block">YOUR POSITION</label>
+            <div className="grid grid-cols-1 gap-2">
               {PERSONA_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setPersona(opt.value)}
-                  className={`border-2 p-4 flex flex-col gap-2 text-left transition-all hover:border-white ${
-                    persona === opt.value
-                      ? 'border-primary bg-primary/10'
-                      : 'border-outline-variant'
+                  onClick={() => handlePersonaChange(opt.value)}
+                  className={`border-2 p-4 flex items-center gap-4 text-left transition-all hover:border-white w-full ${
+                    persona === opt.value ? 'border-primary bg-primary/10' : 'border-outline-variant'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{opt.icon}</span>
-                    <span className={`font-lexend font-black text-sm uppercase ${persona === opt.value ? 'text-primary' : 'text-white'}`}>{opt.label}</span>
+                  <span className="text-2xl shrink-0">{opt.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-lexend font-black text-sm uppercase ${persona === opt.value ? 'text-primary' : 'text-white'}`}>{opt.label}</span>
+                      {opt.privileged && (
+                        <span className="text-[10px] border border-amber-500 text-amber-500 px-1.5 py-0.5 font-bold uppercase tracking-wider">VERIFIED ROLE</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-outline-variant mt-0.5">{opt.desc}</p>
                   </div>
-                  <p className="text-[11px] text-outline-variant leading-snug">{opt.desc}</p>
+                  {persona === opt.value && <span className="material-symbols-outlined text-primary shrink-0">check_circle</span>}
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">YOUR POSITION SHAPES HOW YOUR BOT ARGUES AND NEGOTIATES.</p>
+
+            {/* Role verification code for Director/Executive */}
+            {selectedPersona?.privileged && !roleVerified && (
+              <div className="mt-4 bg-amber-900/20 border-2 border-amber-500 p-4">
+                <p className="text-amber-400 font-label-caps text-xs tracking-widest mb-3">
+                  🔐 {selectedPersona.label} ROLE REQUIRES VERIFICATION
+                </p>
+                <div className="flex gap-3">
+                  <input
+                    type="password"
+                    value={roleCode}
+                    onChange={e => { setRoleCode(e.target.value); setRoleCodeError(''); }}
+                    onKeyDown={e => e.key === 'Enter' && handleVerifyCode()}
+                    placeholder="Enter role access code"
+                    className="flex-1 bg-black border-2 border-amber-500/50 p-3 text-white focus:border-amber-400 focus:outline-none font-body-bold"
+                  />
+                  <button
+                    onClick={handleVerifyCode}
+                    disabled={!roleCode || verifying}
+                    className="bg-amber-500 text-black font-black px-4 uppercase hover:bg-amber-400 transition-colors disabled:opacity-50"
+                  >
+                    {verifying ? '...' : 'VERIFY'}
+                  </button>
+                </div>
+                {roleCodeError && <p className="text-red-400 text-xs mt-2 font-bold">{roleCodeError}</p>}
+              </div>
+            )}
+            {selectedPersona?.privileged && roleVerified && (
+              <div className="mt-3 flex items-center gap-2 text-green-400 text-sm font-bold">
+                <span className="material-symbols-outlined text-sm">verified</span>
+                {selectedPersona.label} role verified
+              </div>
+            )}
           </div>
 
+          {/* Meeting Importance */}
           <div>
             <label className="font-label-caps text-primary text-xs uppercase mb-3 block">MEETING IMPORTANCE</label>
             <div className="grid grid-cols-4 gap-2">
@@ -176,10 +239,10 @@ export default function NewFight() {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">HIGHER IMPORTANCE = YOUR BOT FIGHTS HARDER.</p>
+            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">HIGHER = YOUR BOT FIGHTS HARDER. DIRECTORS & EXECS ALWAYS FIGHT AT MAX.</p>
           </div>
 
-
+          {/* Duration */}
           <div>
             <label className="font-label-caps text-primary text-xs uppercase mb-3 block">MEETING DURATION</label>
             <div className="grid grid-cols-3 gap-3">
@@ -189,9 +252,7 @@ export default function NewFight() {
                   type="button"
                   onClick={() => setDuration(opt.value)}
                   className={`border-2 p-4 flex flex-col items-center justify-center gap-1 transition-all hover:border-white ${
-                    duration === opt.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-outline-variant text-outline-variant'
+                    duration === opt.value ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant text-outline-variant'
                   }`}
                 >
                   <span className="font-lexend font-black text-3xl">{opt.label}</span>
@@ -201,9 +262,13 @@ export default function NewFight() {
               ))}
             </div>
           </div>
-          
-          <button onClick={handleCreate} disabled={!subject || loading} className="w-full bg-primary text-black font-black text-2xl py-6 uppercase italic hover:bg-white transition-all shadow-lg mt-4 disabled:opacity-50">
-            {loading ? 'INITIALIZING...' : 'ISSUE CHALLENGE'}
+
+          <button
+            onClick={handleCreate}
+            disabled={!canSubmit || loading}
+            className="w-full bg-primary text-black font-black text-2xl py-6 uppercase italic hover:bg-white transition-all shadow-lg mt-4 disabled:opacity-50"
+          >
+            {loading ? 'INITIALIZING...' : !canSubmit && selectedPersona?.privileged ? 'VERIFY YOUR ROLE FIRST' : 'ISSUE CHALLENGE'}
           </button>
         </div>
       </div>
