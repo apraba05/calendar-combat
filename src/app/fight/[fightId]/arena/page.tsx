@@ -4,6 +4,103 @@ import { useRouter } from 'next/navigation';
 import { getPusherClient } from '@/lib/pusher';
 import { ChatMessage, TapeData } from '@/types';
 
+// ─── Pixel Art Boxer Grids ────────────────────────────────────────────────────
+// 12 cols × 16 rows, each char = 5px square.
+// H=helmet  S=skin  E=eye  M=mouthguard  N=neck
+// G=back-glove  W=shirt  A=guard-arm  F=punch-glove
+// R=trunks  L=leg  D=shoe  .=transparent
+const IDLE_GRID = [
+  '...HHHHHH...',  // 0  helmet top
+  '..HHHHHHHH..',  // 1  helmet full
+  '..SSSSSSSS..',  // 2  head
+  '..SS.EE.SS..',  // 3  eyes
+  '..SSSSSSSS..',  // 4  face
+  '....MMMM....',  // 5  mouthguard
+  '....NNNN....',  // 6  neck
+  'GGWWWWWWWWAA',  // 7  shirt + back glove (G) + guard arm (A)
+  'G.WWWWWWWW.F',  // 8  gloves at guard height
+  'G.WWWWWWWW.F',  // 9
+  '..RRRRRRRR..',  // 10 trunks
+  '..RRRRRRRR..',  // 11
+  '...LL..LL...',  // 12 legs
+  '...LL..LL...',  // 13
+  '...LL..LL...',  // 14
+  '..DDD..DDD..',  // 15 shoes
+];
+
+// Punch stance: front glove (F) extended — arm (A) replaced by bigger glove block
+const PUNCH_GRID = [
+  '...HHHHHH...',
+  '..HHHHHHHH..',
+  '..SSSSSSSS..',
+  '..SS.EE.SS..',
+  '..SSSSSSSS..',
+  '....MMMM....',
+  '....NNNN....',
+  'GGWWWWWWWWFF',  // 7  arm fully extended into glove
+  'G.WWWWWWWWFF',  // 8  bigger glove block
+  'G.WWWWWWWWFF',  // 9
+  '..RRRRRRRR..',
+  '..RRRRRRRR..',
+  '...LL..LL...',
+  '...LL..LL...',
+  '...LL..LL...',
+  '..DDD..DDD..',
+];
+
+function PixelBoxer({
+  color,
+  facing,
+  punching,
+}: {
+  color: 'red' | 'blue';
+  facing: 'right' | 'left';
+  punching: boolean;
+}) {
+  const p = 5; // 1 pixel = 5 CSS px
+  const primary = color === 'red' ? '#dd1111' : '#0356ff';
+  const colorMap: Record<string, string> = {
+    H: primary,   S: '#e8c09a', E: '#111130', M: primary,
+    N: '#e8c09a', G: primary,   W: '#f0f0f0', A: '#e8c09a',
+    F: primary,   R: primary,   L: '#e8c09a', D: '#111130',
+  };
+
+  const grid = punching ? PUNCH_GRID : IDLE_GRID;
+  // Blue boxer faces left: mirror each row horizontally
+  const rows = facing === 'left'
+    ? grid.map((r) => r.split('').reverse().join(''))
+    : grid;
+
+  const W = p * (grid[0]?.length ?? 12);
+  const H = p * rows.length;
+
+  return (
+    <svg
+      width={W}
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ imageRendering: 'pixelated', display: 'block' }}
+    >
+      {rows.flatMap((row, y) =>
+        row.split('').map((char, x) => {
+          const fill = colorMap[char];
+          if (!fill) return null;
+          return (
+            <rect
+              key={`${x}-${y}`}
+              x={x * p}
+              y={y * p}
+              width={p}
+              height={p}
+              fill={fill}
+            />
+          );
+        })
+      )}
+    </svg>
+  );
+}
+
 export default function Arena({ params }: { params: { fightId: string } }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -102,6 +199,90 @@ export default function Arena({ params }: { params: { fightId: string } }) {
              <h2 className="font-h1-heavy text-white uppercase italic text-3xl animate-pulse">FIGHT IN PROGRESS</h2>
           </div>
         </div>
+
+        {/* ── Pixel Boxing Ring ───────────────────────────────────────── */}
+        <div className="relative flex items-end justify-center gap-4 overflow-visible py-3">
+          {/* Ambient corner spotlights */}
+          <div
+            className={`absolute top-0 left-0 w-2/5 h-full bg-gradient-to-r from-red-900/25 to-transparent pointer-events-none transition-opacity duration-300 ${currentSpeaker === 'MANAGER' ? 'opacity-100' : 'opacity-25'}`}
+          />
+          <div
+            className={`absolute top-0 right-0 w-2/5 h-full bg-gradient-to-l from-blue-900/25 to-transparent pointer-events-none transition-opacity duration-300 ${currentSpeaker === 'IC' ? 'opacity-100' : 'opacity-25'}`}
+          />
+
+          {/* Ring ropes — top */}
+          <div className={`absolute top-0 left-0 right-0 h-0.5 ${currentSpeaker && currentSpeaker !== 'COMMENTATOR' ? 'animate-rope-pulse' : ''}`}
+            style={{ background: 'linear-gradient(90deg, #cc1111 0%, #e9c400 50%, #0356ff 100%)', opacity: 0.5 }}
+          />
+          {/* Ring canvas floor */}
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-red-600/30 via-yellow-500/40 to-blue-600/30" />
+
+          {/* RED BOXER */}
+          <div
+            className={
+              currentSpeaker === 'MANAGER'
+                ? 'animate-boxer-lunge-right'
+                : currentSpeaker === 'IC'
+                ? 'animate-boxer-reel-left'
+                : 'animate-boxer-bob'
+            }
+          >
+            <PixelBoxer color="red" facing="right" punching={currentSpeaker === 'MANAGER'} />
+            <div className="text-center mt-1 font-black text-[9px] uppercase tracking-widest text-red-500">
+              RED CORNER
+            </div>
+          </div>
+
+          {/* VS Ring + impact burst */}
+          <div className="relative z-20 flex-shrink-0 flex flex-col items-center mx-2">
+            <div
+              className={`w-14 h-14 rounded-full border-4 flex items-center justify-center transition-all duration-150 ${
+                currentSpeaker && currentSpeaker !== 'COMMENTATOR'
+                  ? 'border-yellow-400 animate-vs-fight'
+                  : 'border-yellow-800/40'
+              }`}
+              style={{
+                boxShadow:
+                  currentSpeaker && currentSpeaker !== 'COMMENTATOR'
+                    ? '0 0 24px rgba(255,215,0,0.65), 0 0 50px rgba(255,215,0,0.3)'
+                    : '0 0 8px rgba(255,215,0,0.1)',
+              }}
+            >
+              <span className="font-h1-heavy italic text-yellow-400 vs-glow text-lg">VS</span>
+            </div>
+            {/* Impact star — re-mounts on each new message to replay the animation */}
+            {currentSpeaker && currentSpeaker !== 'COMMENTATOR' && (
+              <div
+                key={`burst-${messages.length}`}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none animate-impact-burst"
+              >
+                <span
+                  className="text-4xl font-black select-none"
+                  style={{ color: '#ffe066', textShadow: '0 0 12px #ffd700, 0 0 28px #ff8800' }}
+                >
+                  ✦
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* BLUE BOXER */}
+          <div
+            className={
+              currentSpeaker === 'IC'
+                ? 'animate-boxer-lunge-left'
+                : currentSpeaker === 'MANAGER'
+                ? 'animate-boxer-reel-right'
+                : 'animate-boxer-bob-delayed'
+            }
+          >
+            <PixelBoxer color="blue" facing="left" punching={currentSpeaker === 'IC'} />
+            <div className="text-center mt-1 font-black text-[9px] uppercase tracking-widest text-blue-400">
+              BLUE CORNER
+            </div>
+          </div>
+        </div>
+        {/* ────────────────────────────────────────────────────────────── */}
 
         <div className="grid grid-cols-1 md:grid-cols-7 items-center gap-4 relative">
           <div className={`md:col-span-3 bg-surface-container border-4 border-primary p-4 relative overflow-hidden transition-all duration-300 ${currentSpeaker === 'MANAGER' ? 'ring-4 ring-primary ring-offset-4 ring-offset-black scale-[1.02] bg-primary/10' : ''}`}>

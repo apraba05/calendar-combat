@@ -28,3 +28,81 @@
 .spotlight-glow {
   box-shadow: 0 0 100px 20px rgba(255, 83, 87, 0.3);
 }
+
+/* ============================
+   PIXEL BOXING ANIMATIONS
+   ============================ */
+
+@keyframes boxer-idle-bob {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+@keyframes boxer-lunge-right {
+  0%   { transform: translateX(0px)   translateY(0px)  rotate(0deg); }
+  20%  { transform: translateX(10px)  translateY(-5px) rotate(-4deg); }
+  45%  { transform: translateX(22px)  translateY(-9px) rotate(-7deg); }
+  60%  { transform: translateX(20px)  translateY(-8px) rotate(-6deg); }
+  80%  { transform: translateX(10px)  translateY(-3px) rotate(-2deg); }
+  100% { transform: translateX(0px)   translateY(0px)  rotate(0deg); }
+}
+
+@keyframes boxer-lunge-left {
+  0%   { transform: translateX(0px)   translateY(0px)  rotate(0deg); }
+  20%  { transform: translateX(-10px) translateY(-5px) rotate(4deg); }
+  45%  { transform: translateX(-22px) translateY(-9px) rotate(7deg); }
+  60%  { transform: translateX(-20px) translateY(-8px) rotate(6deg); }
+  80%  { transform: translateX(-10px) translateY(-3px) rotate(2deg); }
+  100% { transform: translateX(0px)   translateY(0px)  rotate(0deg); }
+}
+
+/* Reel right: blue boxer gets hit (moves right = backward for blue) */
+@keyframes boxer-reel-right {
+  0%   { transform: translateX(0px)  rotate(0deg); }
+  18%  { transform: translateX(16px) rotate(-14deg); }
+  38%  { transform: translateX(10px) rotate(-8deg); }
+  55%  { transform: translateX(14px) rotate(-11deg); }
+  75%  { transform: translateX(5px)  rotate(-4deg); }
+  90%  { transform: translateX(2px)  rotate(-1deg); }
+  100% { transform: translateX(0px)  rotate(0deg); }
+}
+
+/* Reel left: red boxer gets hit (moves left = backward for red) */
+@keyframes boxer-reel-left {
+  0%   { transform: translateX(0px)   rotate(0deg); }
+  18%  { transform: translateX(-16px) rotate(14deg); }
+  38%  { transform: translateX(-10px) rotate(8deg); }
+  55%  { transform: translateX(-14px) rotate(11deg); }
+  75%  { transform: translateX(-5px)  rotate(4deg); }
+  90%  { transform: translateX(-2px)  rotate(1deg); }
+  100% { transform: translateX(0px)   rotate(0deg); }
+}
+
+@keyframes impact-burst {
+  0%   { transform: scale(0.1) rotate(-20deg); opacity: 1; }
+  30%  { transform: scale(1.5) rotate(15deg);  opacity: 1; }
+  60%  { transform: scale(1.2) rotate(-8deg);  opacity: 0.85; }
+  85%  { transform: scale(1.3) rotate(5deg);   opacity: 0.5; }
+  100% { transform: scale(1.0) rotate(0deg);   opacity: 0; }
+}
+
+@keyframes vs-ring-fight {
+  0%, 100% { transform: scale(1);    filter: brightness(1);   box-shadow: 0 0 20px rgba(255,215,0,0.4); }
+  45%       { transform: scale(1.2);  filter: brightness(1.9); box-shadow: 0 0 50px rgba(255,215,0,0.9); }
+}
+
+@keyframes ring-rope-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.9; }
+}
+
+/* Utility classes for boxing animations */
+.animate-boxer-bob          { animation: boxer-idle-bob 1.3s ease-in-out infinite; }
+.animate-boxer-bob-delayed  { animation: boxer-idle-bob 1.3s ease-in-out 0.45s infinite; }
+.animate-boxer-lunge-right  { animation: boxer-lunge-right 0.95s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite; }
+.animate-boxer-lunge-left   { animation: boxer-lunge-left  0.95s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite; }
+.animate-boxer-reel-right   { animation: boxer-reel-right  0.75s ease-in-out infinite; }
+.animate-boxer-reel-left    { animation: boxer-reel-left   0.75s ease-in-out infinite; }
+.animate-impact-burst       { animation: impact-burst      0.7s ease-out forwards; }
+.animate-vs-fight           { animation: vs-ring-fight     0.48s ease-in-out infinite; }
+.animate-rope-pulse         { animation: ring-rope-pulse   0.5s ease-in-out infinite; }
