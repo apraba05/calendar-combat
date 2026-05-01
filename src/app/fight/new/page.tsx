@@ -143,6 +143,7 @@ export default function NewFight() {
   const [proposedTime, setProposedTime] = useState('');
   const [importance, setImportance] = useState('medium');
   const [persona, setPersona] = useState('swe');
+  const [selectedRole, setSelectedRole] = useState<'MANAGER' | 'IC'>('MANAGER');
   const [roleCode, setRoleCode] = useState('');
   const [roleCodeError, setRoleCodeError] = useState('');
   const [roleVerified, setRoleVerified] = useState(false);
@@ -184,7 +185,16 @@ export default function NewFight() {
     const res = await fetch('/api/fight/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, durationMinutes: duration, urgency: 'this_week', description: '', proposedTime, importance, challengerPersona: persona }),
+      body: JSON.stringify({
+        subject,
+        durationMinutes: duration,
+        urgency: 'this_week',
+        description: '',
+        proposedTime,
+        importance,
+        challengerPersona: persona,
+        challengerSelectedRole: selectedRole,
+      }),
     });
     if (res.status === 401) { window.location.href = '/api/auth/google?action=login'; return; }
     if (res.ok) {
@@ -327,6 +337,27 @@ export default function NewFight() {
                 {selectedPersona.label} role verified
               </div>
             )}
+          </div>
+
+          <div>
+            <label className="font-label-caps text-primary text-xs uppercase mb-3 block">SELECT YOUR ROLE</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedRole('MANAGER')}
+                className={`border-2 p-3 font-black uppercase transition-all ${selectedRole === 'MANAGER' ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant text-outline-variant'}`}
+              >
+                MANAGER
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRole('IC')}
+                className={`border-2 p-3 font-black uppercase transition-all ${selectedRole === 'IC' ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant text-outline-variant'}`}
+              >
+                IC
+              </button>
+            </div>
+            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">THIS ROLE LOCKS YOUR ARCHETYPE SIDE FOR THE MATCH.</p>
           </div>
 
           {/* Meeting Importance */}

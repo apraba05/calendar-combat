@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   const action = searchParams.get('action') || 'login';
   const fightId = searchParams.get('fightId') || '';
   const persona = searchParams.get('persona') || 'ic';
+  const role = searchParams.get('role') === 'MANAGER' ? 'MANAGER' : 'IC';
 
   if (process.env.DEMO_MODE === 'true') {
     const sessionId = randomUUID();
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     return res;
   }
 
-  const state = Buffer.from(JSON.stringify({ action, fightId, persona })).toString('base64');
+  const state = Buffer.from(JSON.stringify({ action, fightId, persona, role })).toString('base64');
   const url = getAuthUrl(state, req);
   
   return NextResponse.redirect(url);

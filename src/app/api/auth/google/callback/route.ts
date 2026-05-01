@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
           fight.opponent = { id: sessionId, email: userInfo.email || 'unknown@example.com', name: userInfo.name || 'Fighter', avatar: userInfo.avatar || '', tokens };
           fight.status = 'priorities';
           fight.config.opponentPersona = state.persona || 'ic';
+          fight.config.opponentSelectedRole = state.role === 'MANAGER' ? 'MANAGER' : 'IC';
           fight.priorityCount = 0;
           setFight(state.fightId, fight);
           if (pusherServer) {
