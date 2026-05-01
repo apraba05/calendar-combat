@@ -48,7 +48,18 @@ export default function TaleOfTheTape({ params }: { params: { fightId: string } 
       router.push(`/fight/${params.fightId}/arena`);
     });
 
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/fight/${params.fightId}/state`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === 'arena') router.push(`/fight/${params.fightId}/arena`);
+        if (data.status === 'verdict' || data.verdictReady) router.push(`/fight/${params.fightId}/verdict`);
+      } catch {}
+    }, 2000);
+
     return () => {
+      clearInterval(poll);
       channel.unbind_all();
       pusher.unsubscribe(`fight-${params.fightId}`);
     };

@@ -132,6 +132,13 @@ export default function Arena({ params }: { params: { fightId: string } }) {
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const isScrolledUpRef = useRef(false);
   const [currentSpeaker, setCurrentSpeaker] = useState<'MANAGER' | 'IC' | 'COMMENTATOR' | null>(null);
+  const formatTs = (isoOrTime: string) => {
+    const d = new Date(isoOrTime);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    return isoOrTime;
+  };
 
   useEffect(() => {
     const fetchTape = async () => {
@@ -188,6 +195,39 @@ export default function Arena({ params }: { params: { fightId: string } }) {
       channel.unbind_all();
       pusher.unsubscribe(`fight-${params.fightId}`);
     };
+  }, [params.fightId, router]);
+
+  useEffect(() => {
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/fight/${params.fightId}/state`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === 'verdict' || data.verdictReady) {
+          router.push(`/fight/${params.fightId}/verdict`);
+          return;
+        }
+        const transcript = Array.isArray(data.transcript) ? data.transcript : [];
+        const nonCommentary = transcript.filter((m: any) => m.role !== 'COMMENTATOR');
+        const commentary = transcript.filter((m: any) => m.role === 'COMMENTATOR');
+        setMessages(nonCommentary.map((m: any) => ({
+          id: m.id,
+          role: m.role,
+          text: m.text,
+          timestamp: formatTs(m.timestamp),
+        })));
+        setCommentaryLines(commentary.map((m: any) => {
+          const parts = String(m.text || '').split('\n');
+          return {
+            timestamp: formatTs(m.timestamp),
+            main: parts[0] || '',
+            sub: parts[1] || '',
+            role: 'COMMENTATOR',
+          };
+        }).reverse());
+      } catch {}
+    }, 2000);
+    return () => clearInterval(poll);
   }, [params.fightId, router]);
 
   const handleScroll = () => {

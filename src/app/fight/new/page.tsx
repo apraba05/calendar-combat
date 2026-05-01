@@ -222,8 +222,19 @@ export default function NewFight() {
     channel.bind('opponent-joined', () => {
       router.push(`/fight/${fightId}/priorities`);
     });
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/fight/${fightId}/state`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.hasOpponent || data.status === 'priorities' || data.status === 'tape' || data.status === 'arena' || data.status === 'verdict') {
+          router.push(`/fight/${fightId}/priorities`);
+        }
+      } catch {}
+    }, 2000);
     pusherRef.current = pusher;
     return () => {
+      clearInterval(poll);
       channel.unbind_all();
       pusher.unsubscribe(`fight-${fightId}`);
     };
