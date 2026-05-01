@@ -21,8 +21,8 @@ export default function Verdict({ params }: { params: { fightId: string } }) {
   const [scheduling, setScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState('');
   const [eventLink, setEventLink] = useState('');
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [recipientEmail, setRecipientEmail] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
 
@@ -61,37 +61,26 @@ export default function Verdict({ params }: { params: { fightId: string } }) {
     setScheduling(false);
   };
 
-  const handleEmailSummary = () => {
+  const handleEmailSummary = async () => {
     if (!verdict) return;
-    const subject = encodeURIComponent(`[Calendar Combat] AI Judge Ruling — ${verdict.meetingDetails.status}`);
-    const body = encodeURIComponent(
-`CALENDAR COMBAT — AI JUDGE RULING
-===================================
-Fight ID: ${params.fightId}
-Judge's Ruling: ${verdict.winnerName} WINS
-Recommendation: ${verdict.meetingDetails.status}
-${verdict.recommendedTime ? `Recommended Time: ${verdict.recommendedTime}` : ''}
-
---- JUDGE'S RATIONALE ---
-${verdict.judgeRationale}
-
---- JUDGE'S QUOTE ---
-"${verdict.judgeQuote}"
-
-${verdict.conflictsFound.length > 0 ? `--- CONFLICTS IDENTIFIED ---\n${verdict.conflictsFound.join('\n')}` : '--- NO CONFLICTS FOUND ---'}
-
---- SCORECARD ---
-Persistence: ${verdict.stats.persistence}/100
-Passive Aggression: ${verdict.stats.passiveAggression}/100
-Scheduling Brutality: ${verdict.stats.schedulingBrutality}/100
-BCC Lethality: ${verdict.stats.bccLethality}/100
-
-View the full replay: ${window.location.origin}/replays/${params.fightId}
-`);
-    const to = recipientEmail ? encodeURIComponent(recipientEmail) : '';
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
-    setEmailSent(true);
-    setShowEmailModal(false);
+    setSendingEmail(true);
+    setEmailError('');
+    try {
+      const res = await fetch(`/api/fight/${params.fightId}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verdict }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEmailSent(true);
+      } else {
+        setEmailError(data.error || 'Failed to send email.');
+      }
+    } catch {
+      setEmailError('Network error. Try again.');
+    }
+    setSendingEmail(false);
   };
 
   if (!verdict) return (
@@ -224,30 +213,16 @@ View the full replay: ${window.location.origin}/replays/${params.fightId}
 
         {/* Action Row */}
         <div className="flex flex-col gap-3">
-          {showEmailModal ? (
-            <div className="bg-surface-container border-2 border-outline-variant p-6 flex flex-col gap-4">
-              <h3 className="font-lexend font-black text-white uppercase italic">EMAIL JUDGE'S RULING</h3>
-              <input
-                type="email"
-                placeholder="Recipient email (leave blank to open your mail app)"
-                value={recipientEmail}
-                onChange={e => setRecipientEmail(e.target.value)}
-                className="bg-black border-2 border-outline-variant p-4 text-white focus:border-primary focus:outline-none w-full"
-              />
-              <div className="flex gap-4">
-                <button onClick={handleEmailSummary} className="flex-1 bg-primary text-black font-black py-3 uppercase italic hover:bg-white transition-colors">SEND</button>
-                <button onClick={() => setShowEmailModal(false)} className="px-6 border-2 border-outline-variant text-white font-bold hover:border-white transition-colors">CANCEL</button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowEmailModal(true)}
-              className={`w-full border-2 font-black py-4 uppercase italic transition-all flex items-center justify-center gap-3 ${emailSent ? 'border-green-500 text-green-500' : 'border-outline-variant text-white hover:border-white'}`}
-            >
-              <span className="material-symbols-outlined">mail</span>
-              {emailSent ? '✓ RULING SENT' : 'EMAIL JUDGE\'S RULING'}
-            </button>
-          )}
+          <button
+            onClick={handleEmailSummary}
+            disabled={emailSent || sendingEmail}
+            className={`w-full border-2 font-black py-4 uppercase italic transition-all flex items-center justify-center gap-3 disabled:opacity-50 ${emailSent ? 'border-green-500 text-green-500' : 'border-outline-variant text-white hover:border-white'}`}
+          >
+            <span className="material-symbols-outlined">mail</span>
+            {sendingEmail ? 'SENDING EMAIL...' : emailSent ? '✓ AUTOMATED RULING SENT' : 'SEND AUTOMATED RULING EMAIL'}
+          </button>
+          {emailError && <p className="text-red-400 text-xs text-center font-bold uppercase">{emailError}</p>}
+
           <div className="flex gap-4">
             <button onClick={() => router.push(`/replays/${params.fightId}`)} className="flex-1 border-2 border-outline-variant text-white font-black py-4 uppercase italic hover:border-white transition-colors">
               VIEW FULL REPLAY
