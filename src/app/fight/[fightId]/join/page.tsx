@@ -1,20 +1,128 @@
+// v3.0 — character-select persona UI, no stance selection, priorities flow
 "use client";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const PERSONA_OPTIONS = [
-  { value: 'intern', icon: '🎓', label: 'INTERN', desc: 'Just got here. What even is a calendar?', privileged: false },
-  { value: 'swe', icon: '💻', label: 'SOFTWARE ENGINEER', desc: 'Individual contributor. Protecting deep work time.', privileged: false },
-  { value: 'team_lead', icon: '👥', label: 'TEAM LEAD', desc: 'Manage a small team. Calendar is a puzzle.', privileged: false },
-  { value: 'director', icon: '🏢', label: 'DIRECTOR', desc: 'Multiple teams. My time is expensive.', privileged: true },
-  { value: 'executive', icon: '🎯', label: 'EXECUTIVE', desc: 'C-Suite / VP. Extremely limited availability.', privileged: true },
+const PERSONAS = [
+  {
+    value: 'intern',
+    icon: '🎓',
+    label: 'INTERN',
+    flavor: 'The Eager Rookie',
+    desc: 'Just got here. What even is a calendar?',
+    stats: { aggression: 1, flexibility: 5, authority: 1 },
+    privileged: false,
+  },
+  {
+    value: 'swe',
+    icon: '💻',
+    label: 'SOFTWARE ENGINEER',
+    flavor: 'The Deep Work Defender',
+    desc: 'IC protecting focus time at all costs.',
+    stats: { aggression: 2, flexibility: 4, authority: 2 },
+    privileged: false,
+  },
+  {
+    value: 'team_lead',
+    icon: '👥',
+    label: 'TEAM LEAD',
+    flavor: 'The Bridge Builder',
+    desc: 'Balancing the team\'s needs with org pressure.',
+    stats: { aggression: 3, flexibility: 3, authority: 3 },
+    privileged: false,
+  },
+  {
+    value: 'director',
+    icon: '🏢',
+    label: 'DIRECTOR',
+    flavor: 'The Mandate Machine',
+    desc: 'Multiple teams. Your time is expensive.',
+    stats: { aggression: 4, flexibility: 2, authority: 4 },
+    privileged: true,
+  },
+  {
+    value: 'executive',
+    icon: '🎯',
+    label: 'EXECUTIVE',
+    flavor: 'The Calendar Overlord',
+    desc: 'C-Suite / VP. Your calendar is mythology.',
+    stats: { aggression: 5, flexibility: 1, authority: 5 },
+    privileged: true,
+  },
 ];
+
+function StatPips({ value, color }: { value: number; color: string }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map(i => (
+        <div
+          key={i}
+          className={`w-2.5 h-2.5 border ${i <= value ? `${color} border-transparent` : 'bg-transparent border-outline-variant/40'}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PersonaCard({
+  p,
+  selected,
+  onSelect,
+}: {
+  p: typeof PERSONAS[0];
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`border-2 p-4 flex flex-col gap-3 text-left transition-all hover:border-white w-full h-full ${selected ? 'border-secondary-container text-secondary-container bg-white/5' : 'border-outline-variant text-white'}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-3xl">{p.icon}</span>
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {selected && (
+            <span className="material-symbols-outlined text-sm text-secondary-container">check_circle</span>
+          )}
+          {p.privileged && (
+            <span className="text-[9px] border border-amber-500 text-amber-500 px-1.5 py-0.5 font-bold uppercase tracking-wider">
+              VERIFIED
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <div className={`font-lexend font-black text-sm uppercase ${selected ? 'text-secondary-container' : 'text-white'}`}>
+          {p.label}
+        </div>
+        <div className="text-[11px] text-tertiary font-bold italic mt-0.5">{p.flavor}</div>
+        <div className="text-[10px] text-outline-variant mt-1">{p.desc}</div>
+      </div>
+
+      <div className="space-y-1.5 mt-auto">
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] uppercase font-bold text-outline-variant w-16">AGGRESSION</span>
+          <StatPips value={p.stats.aggression} color={selected ? 'bg-secondary-container' : 'bg-outline-variant'} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] uppercase font-bold text-outline-variant w-16">FLEXIBILITY</span>
+          <StatPips value={p.stats.flexibility} color={selected ? 'bg-secondary-container' : 'bg-outline-variant'} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] uppercase font-bold text-outline-variant w-16">AUTHORITY</span>
+          <StatPips value={p.stats.authority} color={selected ? 'bg-secondary-container' : 'bg-outline-variant'} />
+        </div>
+      </div>
+    </button>
+  );
+}
 
 export default function JoinFight({ params }: { params: { fightId: string } }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [stance, setStance] = useState<'accept' | 'avoid'>('accept');
   const [persona, setPersona] = useState('swe');
   const [roleCode, setRoleCode] = useState('');
   const [roleCodeError, setRoleCodeError] = useState('');
@@ -22,17 +130,22 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
   const [verifying, setVerifying] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
 
-  const selectedPersona = PERSONA_OPTIONS.find(p => p.value === persona);
+  const selectedPersona = PERSONAS.find(p => p.value === persona)!;
   const canJoin = !selectedPersona?.privileged || roleVerified;
 
   const handlePersonaChange = (val: string) => {
-    setPersona(val); setRoleCode(''); setRoleCodeError(''); setRoleVerified(false);
+    setPersona(val);
+    setRoleCode('');
+    setRoleCodeError('');
+    setRoleVerified(false);
   };
 
   const handleVerifyCode = async () => {
-    setVerifying(true); setRoleCodeError('');
+    setVerifying(true);
+    setRoleCodeError('');
     const res = await fetch('/api/verify-role', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ persona, code: roleCode }),
     });
     const { valid } = await res.json();
@@ -41,35 +154,22 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
     setVerifying(false);
   };
 
-  const handleAuth = () => {
-    setLoading(true);
-    window.location.href = `/api/auth/google?action=join&fightId=${params.fightId}`;
-  };
-
-  // Try to auto-join if already logged in
-  useEffect(() => {
-    const checkSession = async () => {
-      const res = await fetch(`/api/fight/${params.fightId}/join`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stance, opponentPersona: persona }) });
-      if (res.ok) {
-        router.push(`/fight/${params.fightId}/tape`);
-      } else if (res.status === 401) {
-        setNeedsAuth(true); // Show the connect button
-      } else {
-        setError('Fight not found or already started.');
-      }
-    };
-    checkSession();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // only on mount
-
   const handleJoin = async () => {
-    if (needsAuth) { handleAuth(); return; }
+    if (needsAuth) {
+      window.location.href = `/api/auth/google?action=join&fightId=${params.fightId}`;
+      return;
+    }
     setLoading(true);
-    const res = await fetch(`/api/fight/${params.fightId}/join`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stance, opponentPersona: persona }) });
+    const res = await fetch(`/api/fight/${params.fightId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ opponentPersona: persona }),
+    });
     if (res.ok) {
-      router.push(`/fight/${params.fightId}/tape`);
+      router.push(`/fight/${params.fightId}/priorities`);
     } else if (res.status === 401) {
-      handleAuth();
+      setNeedsAuth(true);
+      setLoading(false);
     } else {
       setError('Fight not found or already started.');
       setLoading(false);
@@ -78,42 +178,37 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
 
   return (
     <div className="min-h-[calc(100vh-80px)] canvas-bg flex flex-col items-center justify-center p-8">
-      <div className="bg-surface-container border-4 border-secondary-container p-12 max-w-2xl w-full shadow-[10px_10px_0px_#000]">
+      <div className="bg-surface-container border-4 border-secondary-container p-10 max-w-3xl w-full shadow-[10px_10px_0px_#000]">
         <h1 className="font-lexend font-black text-4xl italic text-white uppercase mb-2">CHALLENGE RECEIVED</h1>
-        <p className="text-outline font-body-main mb-8">You've been challenged to a scheduling bout. Configure your bot, then connect your calendar to enter the ring.</p>
+        <p className="text-outline font-body-main mb-8">
+          You've been challenged to a scheduling bout. Pick your fighter, then connect your calendar to enter the ring.
+        </p>
 
         {error ? (
           <p className="text-red-500 font-bold mb-4 bg-red-900/20 p-4 border border-red-500">{error}</p>
         ) : (
           <>
-            {/* Bot Persona Selection */}
-            <div className="mb-6">
-              <label className="font-label-caps text-secondary text-xs uppercase mb-4 block tracking-widest">YOUR POSITION</label>
-              <div className="grid grid-cols-1 gap-2">
-                {PERSONA_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => handlePersonaChange(opt.value)}
-                    className={`border-2 p-3 flex items-center gap-3 text-left transition-all w-full ${
-                      persona === opt.value ? 'border-primary bg-primary/10' : 'border-outline-variant'
-                    }`}
-                  >
-                    <span className="text-xl shrink-0">{opt.icon}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`font-lexend font-black text-xs uppercase ${persona === opt.value ? 'text-primary' : 'text-white'}`}>{opt.label}</span>
-                        {opt.privileged && <span className="text-[9px] border border-amber-500 text-amber-500 px-1 py-0.5 font-bold uppercase">VERIFIED</span>}
-                      </div>
-                      <p className="text-[10px] text-outline-variant">{opt.desc}</p>
-                    </div>
-                    {persona === opt.value && <span className="material-symbols-outlined text-primary text-sm">check_circle</span>}
-                  </button>
+            {/* ── CHARACTER SELECT: Bot Persona ── */}
+            <div className="mb-8">
+              <label className="font-label-caps text-secondary text-xs uppercase mb-4 block tracking-widest">
+                CHOOSE YOUR FIGHTER
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {PERSONAS.map(p => (
+                  <PersonaCard
+                    key={p.value}
+                    p={p}
+                    selected={persona === p.value}
+                    onSelect={() => handlePersonaChange(p.value)}
+                  />
                 ))}
               </div>
 
               {selectedPersona?.privileged && !roleVerified && (
-                <div className="mt-3 bg-amber-900/20 border-2 border-amber-500 p-4">
-                  <p className="text-amber-400 font-label-caps text-xs mb-3">🔐 {selectedPersona.label} ROLE REQUIRES VERIFICATION</p>
+                <div className="mt-4 bg-amber-900/20 border-2 border-amber-500 p-4">
+                  <p className="text-amber-400 font-label-caps text-xs mb-3">
+                    🔐 {selectedPersona.label} ROLE REQUIRES VERIFICATION
+                  </p>
                   <div className="flex gap-3">
                     <input
                       type="password"
@@ -123,7 +218,11 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
                       placeholder="Enter role access code"
                       className="flex-1 bg-black border-2 border-amber-500/50 p-3 text-white focus:border-amber-400 focus:outline-none"
                     />
-                    <button onClick={handleVerifyCode} disabled={!roleCode || verifying} className="bg-amber-500 text-black font-black px-4 uppercase hover:bg-amber-400 disabled:opacity-50">
+                    <button
+                      onClick={handleVerifyCode}
+                      disabled={!roleCode || verifying}
+                      className="bg-amber-500 text-black font-black px-4 uppercase hover:bg-amber-400 disabled:opacity-50"
+                    >
                       {verifying ? '...' : 'VERIFY'}
                     </button>
                   </div>
@@ -132,45 +231,47 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
               )}
               {selectedPersona?.privileged && roleVerified && (
                 <div className="mt-2 flex items-center gap-2 text-green-400 text-sm font-bold">
-                  <span className="material-symbols-outlined text-sm">verified</span> {selectedPersona.label} role verified
+                  <span className="material-symbols-outlined text-sm">verified</span>
+                  {selectedPersona.label} role verified
                 </div>
               )}
             </div>
 
-            {/* Bot Stance Selection */}
-            <div className="mb-8">
-              <label className="font-label-caps text-secondary text-xs uppercase mb-4 block tracking-widest">SET YOUR BOT'S NEGOTIATION STANCE</label>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => setStance('accept')}
-                  className={`p-6 border-4 flex flex-col items-center gap-3 transition-all ${stance === 'accept' ? 'border-green-500 bg-green-900/20' : 'border-outline-variant text-outline-variant'}`}
-                >
-                  <span className="material-symbols-outlined text-4xl text-green-400">handshake</span>
-                  <div className="text-center">
-                    <div className="font-lexend font-black text-white uppercase text-lg">ACCEPT MODE</div>
-                    <div className="text-[11px] text-outline-variant mt-1">Your bot is open to the meeting. It will still negotiate hard for a good time, but ultimately wants to find a slot.</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setStance('avoid')}
-                  className={`p-6 border-4 flex flex-col items-center gap-3 transition-all ${stance === 'avoid' ? 'border-red-500 bg-red-900/20' : 'border-outline-variant text-outline-variant'}`}
-                >
-                  <span className="material-symbols-outlined text-4xl text-red-400">block</span>
-                  <div className="text-center">
-                    <div className="font-lexend font-black text-white uppercase text-lg">AVOID MODE</div>
-                    <div className="text-[11px] text-outline-variant mt-1">Your bot will fight to avoid this meeting at all costs. It will stall, counter-propose far-out dates, and push for WALKAWAY.</div>
-                  </div>
-                </button>
+            {/* What happens next */}
+            <div className="bg-black border-2 border-outline-variant p-4 mb-6">
+              <div className="text-[10px] font-bold uppercase text-outline tracking-widest mb-3">WHAT HAPPENS NEXT</div>
+              <div className="space-y-2 text-[11px] text-outline-variant">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center text-[10px] font-black text-white shrink-0">1</span>
+                  <span>Connect your Google Calendar</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center text-[10px] font-black text-white shrink-0">2</span>
+                  <span>Set your calendar priorities — what's non-negotiable vs flexible</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center text-[10px] font-black text-white shrink-0">3</span>
+                  <span>Your bot duels it out in the arena using your priorities</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center text-[10px] font-black text-white shrink-0">4</span>
+                  <span>Judge renders a verdict — then you decide whether to accept</span>
+                </div>
               </div>
             </div>
 
             <button
               onClick={handleJoin}
               disabled={loading || !canJoin}
-              className={`w-full text-white font-black text-2xl py-6 uppercase italic transition-all shadow-lg disabled:opacity-50 ${stance === 'avoid' ? 'bg-red-700 hover:bg-red-500' : 'bg-secondary-container hover:bg-white hover:text-black'}`}
+              className="w-full bg-secondary-container text-white font-black text-2xl py-6 uppercase italic hover:bg-white hover:text-black transition-all shadow-lg disabled:opacity-50"
             >
-              {loading ? 'CONNECTING...' : !canJoin ? 'VERIFY YOUR ROLE FIRST' : needsAuth ? 'CONNECT CALENDAR TO ENTER' : `ENTER THE RING (${stance.toUpperCase()} MODE)`}
+              {loading
+                ? 'CONNECTING...'
+                : !canJoin
+                ? 'VERIFY YOUR ROLE FIRST'
+                : needsAuth
+                ? 'CONNECT CALENDAR TO ENTER'
+                : 'ENTER THE RING'}
             </button>
           </>
         )}

@@ -39,14 +39,16 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
     const isChallengerManager = challengerCard.role === 'MANAGER';
     const managerCard = isChallengerManager ? challengerCard : opponentCard;
     const icCard = isChallengerManager ? opponentCard : challengerCard;
-    
+    const managerPriorities = isChallengerManager ? fight.config.challengerPriorities : fight.config.opponentPriorities;
+    const icPriorities = isChallengerManager ? fight.config.opponentPriorities : fight.config.challengerPriorities;
+
     let chatHistory = '';
 
     while (turns < maxTurns) {
       const currentRole = turns % 2 === 0 ? 'MANAGER' : 'IC';
-      const prompt = currentRole === 'MANAGER' 
-        ? getManagerPrompt(fight.config, managerCard.rawEvents?.map(e => ({start: e.start, end: e.end}))) 
-        : getICPrompt(fight.config, icCard.rawEvents?.map(e => ({start: e.start, end: e.end})));
+      const prompt = currentRole === 'MANAGER'
+        ? getManagerPrompt(fight.config, managerCard.rawEvents?.map(e => ({start: e.start, end: e.end})), managerPriorities)
+        : getICPrompt(fight.config, icCard.rawEvents?.map(e => ({start: e.start, end: e.end})), icPriorities);
 
       let validTurn = false;
       let agentText = '';

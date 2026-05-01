@@ -26,7 +26,17 @@ Output valid JSON matching:
 Roles must be mutually exclusive.
 `;
 
-export const getManagerPrompt = (config: any, availability: any) => {
+function buildPriorityContext(priorities: any[] | undefined): string {
+  if (!priorities || priorities.length === 0) return '';
+  const mustKeep = priorities.filter(p => p.priority === 'must_keep').map(p => p.summary);
+  const important = priorities.filter(p => p.priority === 'important').map(p => p.summary);
+  const lines: string[] = [];
+  if (mustKeep.length > 0) lines.push(`NON-NEGOTIABLE (do NOT give up these slots): ${mustKeep.join(', ')}`);
+  if (important.length > 0) lines.push(`IMPORTANT (fight to protect these if possible): ${important.join(', ')}`);
+  return lines.length > 0 ? `\nYour calendar priorities:\n${lines.join('\n')}` : '';
+}
+
+export const getManagerPrompt = (config: any, availability: any, priorities?: any[]) => {
   const importanceInstructions: Record<string, string> = {
     low: 'This meeting is low priority. Be open to compromise but make your case.',
     medium: 'This meeting is moderately important. Argue firmly for a good time.',
@@ -35,6 +45,8 @@ export const getManagerPrompt = (config: any, availability: any) => {
   };
 
   const personaVoice: Record<string, string> = {
+    intern: 'You are an Intern requesting this meeting. Eager and a little unsure, but trying your best.',
+    swe: 'You are a Software Engineer requesting this meeting. You are collaborative but determined to protect your time.',
     ic: 'You are an Individual Contributor requesting this meeting. You are collaborative but determined.',
     team_lead: 'You are a Team Lead. You speak with mild authority, coordinating across your team. This meeting affects your whole crew.',
     director: 'You are a Director running multiple teams. You speak with authority and efficiency. You do not waste words.',
@@ -46,6 +58,7 @@ export const getManagerPrompt = (config: any, availability: any) => {
   const proposedTimeNote = config.proposedTime
     ? `Open by proposing this specific time: ${config.proposedTime}. If challenged, defend why this time works and argue for it.`
     : 'Propose a concrete time to kick off negotiations.';
+  const priorityNote = buildPriorityContext(priorities);
 
   return `
 You represent a MANAGER in a heated calendar negotiation debate.
@@ -54,6 +67,7 @@ ${importanceNote}
 Meeting topic: "${config.subject}" (${config.durationMinutes} minutes). Urgency: ${config.urgency}.
 Your calendar availability: ${JSON.stringify(availability)}
 ${proposedTimeNote}
+${priorityNote}
 
 STYLE: Be direct, slightly passive-aggressive, corporate. Make arguments about business impact.
 Keep responses to 2-3 sentences. Propose or defend specific times. Make your case to the judge watching.
@@ -61,29 +75,27 @@ Do NOT use tokens like [AGREEMENT] or [WALKAWAY]. Just argue your position natur
 `;
 };
 
-export const getICPrompt = (config: any, availability: any) => {
-  const stanceInstructions: Record<string, string> = {
-    accept: 'You are willing to meet but need to protect your deep work blocks. Negotiate for a time that respects your focus hours. Make your case to the judge.',
-    avoid: 'You are skeptical this meeting is necessary. Challenge the urgency. Suggest async alternatives. Argue that your current priorities are more important. Make the judge understand why this meeting should not happen.',
-  };
-
+export const getICPrompt = (config: any, availability: any, priorities?: any[]) => {
   const personaVoice: Record<string, string> = {
+    intern: 'You are an Intern. You are nervous about pushing back but your calendar is actually packed.',
+    swe: 'You are a Software Engineer protecting your deep work time. You have limited calendar power but infinite passive aggression.',
     ic: 'You are an Individual Contributor. You have limited calendar power but infinite passive aggression.',
     team_lead: 'You are a Team Lead. You have some authority and a full calendar. You protect your team\'s focus time as well as your own.',
     director: 'You are a Director. You have significant authority and your time is precious. You can push back hard.',
     executive: 'You are a C-Suite Executive or VP. You have almost no open calendar time and a chief of staff filtering your meetings. You are very hard to get a meeting with.',
   };
 
-  const stanceNote = stanceInstructions[config.opponentStance || 'accept'];
   const personaNote = personaVoice[config.opponentPersona || 'ic'];
+  const priorityNote = buildPriorityContext(priorities);
 
   return `
 You represent an IC (Individual Contributor) in a calendar negotiation debate.
 ${personaNote}
-Stance: ${stanceNote}
 Meeting topic: "${config.subject}" (${config.durationMinutes} minutes).
 Your calendar availability: ${JSON.stringify(availability)}
+${priorityNote}
 
+Negotiate hard for your time. Push back on the proposed time if it conflicts with your priorities.
 STYLE: Sarcastic, principled, data-driven. Reference your workload and priorities.
 Keep responses to 2-3 sentences. Counter-propose or push back with specific reasons.
 Do NOT use tokens like [AGREEMENT] or [WALKAWAY]. Just argue your position naturally.

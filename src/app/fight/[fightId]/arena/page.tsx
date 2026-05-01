@@ -101,11 +101,30 @@ function PixelBoxer({
   );
 }
 
+interface FightMeta {
+  subject: string;
+  durationMinutes: number;
+  challengerName: string;
+  challengerPersona: string;
+  challengerRole: 'MANAGER' | 'IC' | null;
+  opponentName: string | null;
+  opponentPersona: string;
+}
+
+const PERSONA_LABEL: Record<string, string> = {
+  ic: 'IC',
+  team_lead: 'TEAM LEAD',
+  director: 'DIRECTOR',
+  executive: 'EXECUTIVE',
+  intern: 'INTERN',
+};
+
 export default function Arena({ params }: { params: { fightId: string } }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [commentaryLines, setCommentaryLines] = useState<{timestamp: string; main: string; sub: string; role: string}[]>([]);
   const [tape, setTape] = useState<TapeData | null>(null);
+  const [meta, setMeta] = useState<FightMeta | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
@@ -117,7 +136,12 @@ export default function Arena({ params }: { params: { fightId: string } }) {
       const res = await fetch(`/api/fight/${params.fightId}/tape`, { method: 'POST' });
       if (res.ok) setTape(await res.json());
     };
+    const fetchMeta = async () => {
+      const res = await fetch(`/api/fight/${params.fightId}/meta`);
+      if (res.ok) setMeta(await res.json());
+    };
     fetchTape();
+    fetchMeta();
 
     const pusher = getPusherClient();
     const channel = pusher.subscribe(`fight-${params.fightId}`);
@@ -189,6 +213,13 @@ export default function Arena({ params }: { params: { fightId: string } }) {
   const redCard = tape.challengerCard.role === 'MANAGER' ? tape.challengerCard : tape.opponentCard;
   const blueCard = tape.challengerCard.role === 'MANAGER' ? tape.opponentCard : tape.challengerCard;
 
+  // Map real user names/personas to red (MANAGER) and blue (IC) corners
+  const isChallengerManager = tape.challengerCard.role === 'MANAGER';
+  const redName  = isChallengerManager ? (meta?.challengerName ?? '') : (meta?.opponentName ?? '');
+  const blueName = isChallengerManager ? (meta?.opponentName ?? '') : (meta?.challengerName ?? '');
+  const redPersona  = PERSONA_LABEL[isChallengerManager ? (meta?.challengerPersona ?? '') : (meta?.opponentPersona ?? '')] ?? '';
+  const bluePersona = PERSONA_LABEL[isChallengerManager ? (meta?.opponentPersona ?? '') : (meta?.challengerPersona ?? '')] ?? '';
+
   return (
     <div className="grid grid-cols-12 gap-8 w-full max-w-[1600px] mx-auto p-8 relative min-h-screen">
       <div className="col-span-12 lg:col-span-9 flex flex-col gap-8">
@@ -228,8 +259,9 @@ export default function Arena({ params }: { params: { fightId: string } }) {
             }
           >
             <PixelBoxer color="red" facing="right" punching={currentSpeaker === 'MANAGER'} />
-            <div className="text-center mt-1 font-black text-[9px] uppercase tracking-widest text-red-500">
-              RED CORNER
+            <div className="text-center mt-1">
+              {redName && <div className="font-black text-[11px] uppercase tracking-wider text-white truncate max-w-[60px]">{redName}</div>}
+              {redPersona && <div className="font-black text-[9px] uppercase tracking-widest text-red-500">{redPersona}</div>}
             </div>
           </div>
 
@@ -277,8 +309,9 @@ export default function Arena({ params }: { params: { fightId: string } }) {
             }
           >
             <PixelBoxer color="blue" facing="left" punching={currentSpeaker === 'IC'} />
-            <div className="text-center mt-1 font-black text-[9px] uppercase tracking-widest text-blue-400">
-              BLUE CORNER
+            <div className="text-center mt-1">
+              {blueName && <div className="font-black text-[11px] uppercase tracking-wider text-white truncate max-w-[60px]">{blueName}</div>}
+              {bluePersona && <div className="font-black text-[9px] uppercase tracking-widest text-blue-400">{bluePersona}</div>}
             </div>
           </div>
         </div>
@@ -286,8 +319,14 @@ export default function Arena({ params }: { params: { fightId: string } }) {
 
         <div className="grid grid-cols-1 md:grid-cols-7 items-center gap-4 relative">
           <div className={`md:col-span-3 bg-surface-container border-4 border-primary p-4 relative overflow-hidden transition-all duration-300 ${currentSpeaker === 'MANAGER' ? 'ring-4 ring-primary ring-offset-4 ring-offset-black scale-[1.02] bg-primary/10' : ''}`}>
-            <div className="absolute top-0 right-0 bg-primary text-on-primary font-black px-4 py-1 skew-x-[-12deg] mr-[-10px] mt-2 z-10">THE MANAGER (RED)</div>
-            <h3 className="font-h1-heavy text-3xl text-white uppercase italic mt-4">{redCard.archetype}</h3>
+            <div className="absolute top-0 right-0 bg-primary text-on-primary font-black px-4 py-1 skew-x-[-12deg] mr-[-10px] mt-2 z-10 flex items-center gap-2">
+              <span>THE MANAGER</span>
+              {redPersona && <span className="opacity-80">· {redPersona}</span>}
+            </div>
+            {redName && (
+              <div className="font-label-caps text-[10px] text-outline uppercase tracking-widest mt-6 mb-0.5">{redName}</div>
+            )}
+            <h3 className="font-h1-heavy text-3xl text-white uppercase italic mt-1">{redCard.archetype}</h3>
             {currentSpeaker === 'MANAGER' && (
               <div className="absolute bottom-2 left-4 text-primary font-lexend font-black text-xs uppercase animate-pulse flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
@@ -303,8 +342,14 @@ export default function Arena({ params }: { params: { fightId: string } }) {
           </div>
 
           <div className={`md:col-span-3 bg-surface-container border-4 border-secondary-container p-4 relative overflow-hidden transition-all duration-300 ${currentSpeaker === 'IC' ? 'ring-4 ring-secondary-container ring-offset-4 ring-offset-black scale-[1.02] bg-secondary-container/10' : ''}`}>
-            <div className="absolute top-0 left-0 bg-secondary-container text-white font-black px-4 py-1 skew-x-[12deg] ml-[-10px] mt-2 z-10">THE IC (BLUE)</div>
-            <h3 className="font-h1-heavy text-3xl text-white uppercase italic mt-4 text-right">{blueCard.archetype}</h3>
+            <div className="absolute top-0 left-0 bg-secondary-container text-white font-black px-4 py-1 skew-x-[12deg] ml-[-10px] mt-2 z-10 flex items-center gap-2">
+              <span>THE IC</span>
+              {bluePersona && <span className="opacity-80">· {bluePersona}</span>}
+            </div>
+            {blueName && (
+              <div className="font-label-caps text-[10px] text-outline uppercase tracking-widest mt-6 mb-0.5 text-right">{blueName}</div>
+            )}
+            <h3 className="font-h1-heavy text-3xl text-white uppercase italic mt-1 text-right">{blueCard.archetype}</h3>
             {currentSpeaker === 'IC' && (
               <div className="absolute bottom-2 right-4 text-secondary-container font-lexend font-black text-xs uppercase animate-pulse flex items-center gap-2">
                 FORMULATING COUNTER...

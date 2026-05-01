@@ -19,6 +19,14 @@ export interface CalendarEvent {
   attendeesCount: number;
 }
 
+export interface EventPriority {
+  eventId: string;
+  summary: string;
+  start: string;
+  end: string;
+  priority: 'must_keep' | 'important' | 'flexible';
+}
+
 export interface FightConfig {
   subject: string;
   durationMinutes: number;
@@ -26,9 +34,10 @@ export interface FightConfig {
   description: string;
   proposedTime?: string;
   importance?: 'low' | 'medium' | 'high' | 'critical';
-  opponentStance?: 'accept' | 'avoid';
-  challengerPersona?: 'ic' | 'team_lead' | 'director' | 'executive';
-  opponentPersona?: 'ic' | 'team_lead' | 'director' | 'executive';
+  challengerPersona?: string;
+  opponentPersona?: string;
+  challengerPriorities?: EventPriority[];
+  opponentPriorities?: EventPriority[];
 }
 
 export interface FighterCard {
@@ -77,9 +86,10 @@ export interface FightState {
   challenger: User;
   opponent?: User;
   config: FightConfig;
-  status: 'waiting' | 'tape' | 'arena' | 'verdict';
+  status: 'waiting' | 'priorities' | 'tape' | 'arena' | 'verdict';
   tapeData?: TapeData;
   transcript: ChatMessage[];
   verdictData?: VerdictData;
   readyCount: number; // for syncing transitions (e.g. both click 'ENTER ARENA')
+  priorityCount?: number; // tracks how many users have submitted priorities
 }

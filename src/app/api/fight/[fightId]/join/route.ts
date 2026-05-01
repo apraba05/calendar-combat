@@ -18,18 +18,16 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
     return NextResponse.json({ success: true });
   }
 
-  let stance: 'accept' | 'avoid' = 'accept';
   let opponentPersona: string = 'ic';
   try {
     const body = await req.json();
-    stance = body.stance === 'avoid' ? 'avoid' : 'accept';
     opponentPersona = body.opponentPersona || 'ic';
   } catch {}
 
   fight.opponent = session;
-  fight.status = 'tape';
-  fight.config.opponentStance = stance;
-  fight.config.opponentPersona = opponentPersona as any;
+  fight.status = 'priorities';
+  fight.config.opponentPersona = opponentPersona;
+  fight.priorityCount = 0;
   setFight(fightId, fight);
 
   if (pusherServer) {
