@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getPusherClient } from '@/lib/pusher';
 import { ChatMessage, TapeData } from '@/types';
@@ -127,6 +127,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
   const [meta, setMeta] = useState<FightMeta | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevScrollHeightRef = useRef(0);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const isScrolledUpRef = useRef(false);
   const [currentSpeaker, setCurrentSpeaker] = useState<'MANAGER' | 'IC' | 'COMMENTATOR' | null>(null);
@@ -196,14 +197,30 @@ export default function Arena({ params }: { params: { fightId: string } }) {
     setIsScrolledUp(!nearBottom);
   };
 
-  useEffect(() => {
-    if (!isScrolledUpRef.current) {
-      endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const prevHeight = prevScrollHeightRef.current;
+    const nextHeight = el.scrollHeight;
+    const delta = nextHeight - prevHeight;
+
+    if (isScrolledUpRef.current) {
+      // Preserve user viewport while new chunks stream in.
+      if (delta > 0) el.scrollTop += delta;
+    } else {
+      el.scrollTop = nextHeight;
     }
+
+    prevScrollHeightRef.current = nextHeight;
   }, [messages]);
 
   const jumpToLatest = () => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      prevScrollHeightRef.current = el.scrollHeight;
+    }
     setIsScrolledUp(false);
     isScrolledUpRef.current = false;
   };
@@ -368,7 +385,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
             {messages.map((msg, i) => {
               const isA = msg.role === 'MANAGER';
               return (
-                <div key={i} className={`flex flex-col ${isA ? 'items-start' : 'items-end ml-auto'} max-w-[80%]`}>
+                <div key={msg.id} className={`flex flex-col ${isA ? 'items-start' : 'items-end ml-auto'} max-w-[80%]`}>
                   <span className={`font-label-caps text-[10px] mb-1 uppercase ${isA ? 'text-primary' : 'text-secondary'}`}>
                     {msg.role} [{msg.timestamp}]
                   </span>

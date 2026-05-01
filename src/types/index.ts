@@ -36,6 +36,8 @@ export interface FightConfig {
   importance?: 'low' | 'medium' | 'high' | 'critical';
   challengerPersona?: string;
   opponentPersona?: string;
+  challengerSelectedRole?: 'MANAGER' | 'IC';
+  opponentSelectedRole?: 'MANAGER' | 'IC';
   challengerPriorities?: EventPriority[];
   opponentPriorities?: EventPriority[];
 }

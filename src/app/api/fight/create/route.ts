@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       proposedTime: body.proposedTime || undefined,
       importance: body.importance || 'medium',
       challengerPersona: body.challengerPersona || 'ic',
+      challengerSelectedRole: body.challengerSelectedRole === 'IC' ? 'IC' : 'MANAGER',
     },
     status: 'waiting',
     transcript: [],

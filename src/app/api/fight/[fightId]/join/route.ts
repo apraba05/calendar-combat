@@ -19,14 +19,17 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
   }
 
   let opponentPersona: string = 'ic';
+  let opponentSelectedRole: 'MANAGER' | 'IC' = 'IC';
   try {
     const body = await req.json();
     opponentPersona = body.opponentPersona || 'ic';
+    opponentSelectedRole = body.opponentSelectedRole === 'MANAGER' ? 'MANAGER' : 'IC';
   } catch {}
 
   fight.opponent = session;
   fight.status = 'priorities';
   fight.config.opponentPersona = opponentPersona;
+  fight.config.opponentSelectedRole = opponentSelectedRole;
   fight.priorityCount = 0;
   setFight(fightId, fight);
 

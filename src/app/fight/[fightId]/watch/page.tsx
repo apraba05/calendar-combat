@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getPusherClient } from '@/lib/pusher';
 import { ChatMessage, TapeData } from '@/types';
@@ -9,7 +9,7 @@ export default function WatchArena({ params }: { params: { fightId: string } }) 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [commentaryLines, setCommentaryLines] = useState<{timestamp: string; main: string; sub: string; role: string}[]>([]);
   const [tape, setTape] = useState<TapeData | null>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchTape = async () => {
@@ -61,8 +61,10 @@ export default function WatchArena({ params }: { params: { fightId: string } }) 
     };
   }, [params.fightId, router]);
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   if (!tape) return <div className="min-h-screen canvas-bg flex items-center justify-center"><h1 className="text-white text-4xl font-lexend font-black italic uppercase animate-pulse">CONNECTING TO SATELLITE...</h1></div>;
@@ -103,11 +105,11 @@ export default function WatchArena({ params }: { params: { fightId: string } }) 
         </div>
 
         <div className="bg-surface-container-low border-2 border-outline-variant flex flex-col h-[500px] relative">
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6">
             {messages.map((msg, i) => {
               const isA = msg.role === 'MANAGER';
               return (
-                <div key={i} className={`flex flex-col ${isA ? 'items-start' : 'items-end ml-auto'} max-w-[80%]`}>
+                <div key={msg.id} className={`flex flex-col ${isA ? 'items-start' : 'items-end ml-auto'} max-w-[80%]`}>
                   <span className={`font-label-caps text-[10px] mb-1 uppercase ${isA ? 'text-primary' : 'text-secondary'}`}>
                     {msg.role} [{msg.timestamp}]
                   </span>
@@ -119,7 +121,6 @@ export default function WatchArena({ params }: { params: { fightId: string } }) 
                 </div>
               );
             })}
-            <div ref={endRef} />
           </div>
         </div>
       </div>

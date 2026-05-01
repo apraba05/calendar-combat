@@ -124,6 +124,7 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [persona, setPersona] = useState('swe');
+  const [selectedRole, setSelectedRole] = useState<'MANAGER' | 'IC'>('IC');
   const [roleCode, setRoleCode] = useState('');
   const [roleCodeError, setRoleCodeError] = useState('');
   const [roleVerified, setRoleVerified] = useState(false);
@@ -156,14 +157,14 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
 
   const handleJoin = async () => {
     if (needsAuth) {
-      window.location.href = `/api/auth/google?action=join&fightId=${params.fightId}&persona=${persona}`;
+      window.location.href = `/api/auth/google?action=join&fightId=${params.fightId}&persona=${persona}&role=${selectedRole}`;
       return;
     }
     setLoading(true);
     const res = await fetch(`/api/fight/${params.fightId}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ opponentPersona: persona }),
+      body: JSON.stringify({ opponentPersona: persona, opponentSelectedRole: selectedRole }),
     });
     if (res.ok) {
       router.push(`/fight/${params.fightId}/priorities`);
@@ -235,6 +236,29 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
                   {selectedPersona.label} role verified
                 </div>
               )}
+            </div>
+
+            <div className="mb-8">
+              <label className="font-label-caps text-secondary text-xs uppercase mb-3 block tracking-widest">
+                SELECT YOUR ROLE
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('MANAGER')}
+                  className={`border-2 p-3 font-black uppercase transition-all ${selectedRole === 'MANAGER' ? 'border-secondary-container bg-secondary-container/10 text-secondary-container' : 'border-outline-variant text-outline-variant'}`}
+                >
+                  MANAGER
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('IC')}
+                  className={`border-2 p-3 font-black uppercase transition-all ${selectedRole === 'IC' ? 'border-secondary-container bg-secondary-container/10 text-secondary-container' : 'border-outline-variant text-outline-variant'}`}
+                >
+                  IC
+                </button>
+              </div>
+              <p className="text-[10px] text-outline-variant mt-1 font-label-caps">THIS ROLE LOCKS YOUR ARCHETYPE SIDE FOR THE MATCH.</p>
             </div>
 
             {/* What happens next */}
