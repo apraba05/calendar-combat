@@ -21,6 +21,8 @@ export async function POST(req: NextRequest) {
       durationMinutes: parseInt(body.durationMinutes),
       urgency: body.urgency,
       description: body.description,
+      proposedTime: body.proposedTime || undefined,
+      importance: body.importance || 'medium',
     },
     status: 'waiting',
     transcript: [],

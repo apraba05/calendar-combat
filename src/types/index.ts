@@ -24,6 +24,9 @@ export interface FightConfig {
   durationMinutes: number;
   urgency: 'this_week' | 'next_two_weeks' | 'flexible';
   description: string;
+  proposedTime?: string; // ISO datetime proposed by challenger
+  importance?: 'low' | 'medium' | 'high' | 'critical'; // How hard the challenger's bot fights
+  opponentStance?: 'accept' | 'avoid'; // How the opponent's bot negotiates
 }
 
 export interface FighterCard {

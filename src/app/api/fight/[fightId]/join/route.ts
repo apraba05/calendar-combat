@@ -15,18 +15,24 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
   if (!fight) return NextResponse.json({ error: 'Fight not found' }, { status: 404 });
 
   if (fight.challenger.email === session.email) {
-    // Challenger is rejoining their own fight, let them pass
     return NextResponse.json({ success: true });
   }
 
+  let stance: 'accept' | 'avoid' = 'accept';
+  try {
+    const body = await req.json();
+    stance = body.stance === 'avoid' ? 'avoid' : 'accept';
+  } catch {}
+
   fight.opponent = session;
   fight.status = 'tape';
+  fight.config.opponentStance = stance;
   setFight(fightId, fight);
 
-  // Notify challenger via Pusher that opponent joined
   if (pusherServer) {
     pusherServer.trigger(`fight-${fightId}`, 'opponent-joined', {});
   }
 
   return NextResponse.json({ success: true });
 }
+
