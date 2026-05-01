@@ -156,7 +156,7 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
 
   const handleJoin = async () => {
     if (needsAuth) {
-      window.location.href = `/api/auth/google?action=join&fightId=${params.fightId}`;
+      window.location.href = `/api/auth/google?action=join&fightId=${params.fightId}&persona=${persona}`;
       return;
     }
     setLoading(true);
