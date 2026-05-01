@@ -19,7 +19,9 @@ export async function GET(req: NextRequest) {
       avatar: '',
       tokens: { access_token: 'demo' }
     });
-    const res = NextResponse.redirect(new URL(action === 'join' ? `/fight/${fightId}/join` : '/fight/new', req.url));
+    const origin = process.env.NODE_ENV === 'production' ? 'https://calendar-combat.onrender.com' : 'http://localhost:3000';
+    const redirectPath = action === 'join' ? `/fight/${fightId}/join` : '/fight/new';
+    const res = NextResponse.redirect(`${origin}${redirectPath}`);
     res.cookies.set('sessionId', sessionId, { path: '/', httpOnly: true });
     return res;
   }
