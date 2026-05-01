@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 const ROLE_CODES: Record<string, string> = {
-  director: 'DIRECTOR2024',
-  executive: 'EXEC2024',
+  director: 'DIRECTOR2026',
+  executive: 'EXEC2026',
 };
 
 export async function POST(req: NextRequest) {
