@@ -51,6 +51,10 @@ const PERSONAS = [
   },
 ];
 
+const roleForPersona = (persona: string): 'MANAGER' | 'IC' => {
+  return persona === 'team_lead' || persona === 'director' || persona === 'executive' ? 'MANAGER' : 'IC';
+};
+
 function StatPips({ value, color }: { value: number; color: string }) {
   return (
     <div className="flex gap-0.5">
@@ -124,7 +128,6 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [persona, setPersona] = useState('swe');
-  const [selectedRole, setSelectedRole] = useState<'MANAGER' | 'IC'>('IC');
   const [roleCode, setRoleCode] = useState('');
   const [roleCodeError, setRoleCodeError] = useState('');
   const [roleVerified, setRoleVerified] = useState(false);
@@ -132,6 +135,7 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
   const [needsAuth, setNeedsAuth] = useState(false);
 
   const selectedPersona = PERSONAS.find(p => p.value === persona)!;
+  const selectedRole = roleForPersona(persona);
   const canJoin = !selectedPersona?.privileged || roleVerified;
 
   const handlePersonaChange = (val: string) => {
@@ -236,29 +240,6 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
                   {selectedPersona.label} role verified
                 </div>
               )}
-            </div>
-
-            <div className="mb-8">
-              <label className="font-label-caps text-secondary text-xs uppercase mb-3 block tracking-widest">
-                SELECT YOUR ROLE
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole('MANAGER')}
-                  className={`border-2 p-3 font-black uppercase transition-all ${selectedRole === 'MANAGER' ? 'border-secondary-container bg-secondary-container/10 text-secondary-container' : 'border-outline-variant text-outline-variant'}`}
-                >
-                  MANAGER
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole('IC')}
-                  className={`border-2 p-3 font-black uppercase transition-all ${selectedRole === 'IC' ? 'border-secondary-container bg-secondary-container/10 text-secondary-container' : 'border-outline-variant text-outline-variant'}`}
-                >
-                  IC
-                </button>
-              </div>
-              <p className="text-[10px] text-outline-variant mt-1 font-label-caps">THIS ROLE LOCKS YOUR ARCHETYPE SIDE FOR THE MATCH.</p>
             </div>
 
             {/* What happens next */}

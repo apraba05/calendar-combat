@@ -31,8 +31,15 @@ export async function GET(req: NextRequest, { params }: { params: { fightId: str
 
   const json = await generateJson(`${judgePrompt}\n\nFULL TRANSCRIPT:\n${transcriptStr}`);
 
+  const formatPersonaLabel = (persona?: string) => (persona || 'champion').replace(/_/g, ' ').toUpperCase();
+  const managerPersona = challengerCard?.role === 'MANAGER' ? fight.config.challengerPersona : fight.config.opponentPersona;
+  const icPersona = challengerCard?.role === 'IC' ? fight.config.challengerPersona : fight.config.opponentPersona;
   const ruling = json?.ruling || 'DRAW';
-  const winnerName = ruling === 'MANAGER_WINS' ? 'THE MANAGER' : ruling === 'IC_WINS' ? 'THE IC' : 'DRAW';
+  const winnerName = ruling === 'MANAGER_WINS'
+    ? `THE ${formatPersonaLabel(managerPersona)}`
+    : ruling === 'IC_WINS'
+    ? `THE ${formatPersonaLabel(icPersona)}`
+    : 'DRAW';
   const winnerRole: 'MANAGER' | 'IC' | 'DRAW' = ruling === 'MANAGER_WINS' ? 'MANAGER' : ruling === 'IC_WINS' ? 'IC' : 'DRAW';
 
   const verdict = {

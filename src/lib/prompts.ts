@@ -10,7 +10,7 @@ CRITICAL RULES:
 - The archetype name must reflect something specific from their actual events (e.g. if they have hackathons and mentorship sessions, call them "THE HACKATHON HERALD" not a generic "DEEP WORK DYNAMO").
 - Signature moves must be invented from REAL events in their calendar — name the move after an actual event type you see (e.g. if they have "BobaTalk Mentorship", a move could be "THE BOBATALK AMBUSH - Invoked when mentorship is weaponized as a scheduling excuse").
 - calendarEntries must be a selection of their ACTUAL event summaries from the data, formatted dramatically.
-- Do NOT invent generic manager/IC tropes. Every field must be grounded in the real data.
+- Do NOT invent generic manager/engineer tropes. Every field must be grounded in the real data.
 - If a fighter has very few or no events, their archetype should reflect that emptiness (e.g. "THE GHOST", "THE VOID WALKER").
 - In rationale and moves, mention at least two concrete event summaries from each calendar.
 
@@ -98,7 +98,7 @@ export const getICPrompt = (config: any, availability: any, priorities?: any[]) 
   const priorityNote = buildPriorityContext(priorities);
 
   return `
-You represent an IC (Individual Contributor) in a calendar negotiation debate.
+You represent an Engineer (Individual Contributor) in a calendar negotiation debate.
 ${personaNote}
 Meeting topic: "${config.subject}" (${config.durationMinutes} minutes).
 Your calendar availability: ${JSON.stringify(availability)}
@@ -168,7 +168,7 @@ Render your verdict as JSON:
 Rules:
 - If the proposed time has NO conflicts, strongly lean toward MANAGER_WINS and recommendMeeting: true
 - If conflicts exist but meeting importance is HIGH or CRITICAL, weigh whether this meeting should displace the conflict
-- If the IC made genuinely good arguments about async alternatives, consider IC_WINS
+- If the Engineer made genuinely good arguments about async alternatives, consider IC_WINS
 - DRAW only when arguments are truly equal
 `;
 };

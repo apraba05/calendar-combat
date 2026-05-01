@@ -112,7 +112,8 @@ interface FightMeta {
 }
 
 const PERSONA_LABEL: Record<string, string> = {
-  ic: 'IC',
+  ic: 'INDIVIDUAL CONTRIBUTOR',
+  swe: 'SOFTWARE ENGINEER',
   team_lead: 'TEAM LEAD',
   director: 'DIRECTOR',
   executive: 'EXECUTIVE',
@@ -230,12 +231,19 @@ export default function Arena({ params }: { params: { fightId: string } }) {
   const redCard = tape.challengerCard.role === 'MANAGER' ? tape.challengerCard : tape.opponentCard;
   const blueCard = tape.challengerCard.role === 'MANAGER' ? tape.opponentCard : tape.challengerCard;
 
-  // Map real user names/personas to red (MANAGER) and blue (IC) corners
+  // Map real user names/personas to red and blue corners
   const isChallengerManager = tape.challengerCard.role === 'MANAGER';
   const redName  = isChallengerManager ? (meta?.challengerName ?? '') : (meta?.opponentName ?? '');
   const blueName = isChallengerManager ? (meta?.opponentName ?? '') : (meta?.challengerName ?? '');
   const redPersona  = PERSONA_LABEL[isChallengerManager ? (meta?.challengerPersona ?? '') : (meta?.opponentPersona ?? '')] ?? '';
   const bluePersona = PERSONA_LABEL[isChallengerManager ? (meta?.opponentPersona ?? '') : (meta?.challengerPersona ?? '')] ?? '';
+  const redHeader = redPersona ? `THE ${redPersona}` : 'RED CORNER';
+  const blueHeader = bluePersona ? `THE ${bluePersona}` : 'BLUE CORNER';
+  const getSpeakerLabel = (role: ChatMessage['role']) => {
+    if (role === 'COMMENTATOR') return 'COMMENTATOR';
+    if (role === 'MANAGER') return redPersona || redName || 'RED CORNER';
+    return bluePersona || blueName || 'BLUE CORNER';
+  };
 
   return (
     <div className="grid grid-cols-12 gap-8 w-full max-w-[1600px] mx-auto p-8 relative min-h-screen">
@@ -337,7 +345,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
         <div className="grid grid-cols-1 md:grid-cols-7 items-center gap-4 relative">
           <div className={`md:col-span-3 bg-surface-container border-4 border-primary p-4 relative overflow-hidden transition-all duration-300 ${currentSpeaker === 'MANAGER' ? 'ring-4 ring-primary ring-offset-4 ring-offset-black scale-[1.02] bg-primary/10' : ''}`}>
             <div className="absolute top-0 right-0 bg-primary text-on-primary font-black px-4 py-1 skew-x-[-12deg] mr-[-10px] mt-2 z-10 flex items-center gap-2">
-              <span>THE MANAGER</span>
+              <span>{redHeader}</span>
               {redPersona && <span className="opacity-80">· {redPersona}</span>}
             </div>
             {redName && (
@@ -360,7 +368,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
 
           <div className={`md:col-span-3 bg-surface-container border-4 border-secondary-container p-4 relative overflow-hidden transition-all duration-300 ${currentSpeaker === 'IC' ? 'ring-4 ring-secondary-container ring-offset-4 ring-offset-black scale-[1.02] bg-secondary-container/10' : ''}`}>
             <div className="absolute top-0 left-0 bg-secondary-container text-white font-black px-4 py-1 skew-x-[12deg] ml-[-10px] mt-2 z-10 flex items-center gap-2">
-              <span>THE IC</span>
+              <span>{blueHeader}</span>
               {bluePersona && <span className="opacity-80">· {bluePersona}</span>}
             </div>
             {blueName && (
@@ -387,7 +395,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
               return (
                 <div key={msg.id} className={`flex flex-col ${isA ? 'items-start' : 'items-end ml-auto'} max-w-[80%]`}>
                   <span className={`font-label-caps text-[10px] mb-1 uppercase ${isA ? 'text-primary' : 'text-secondary'}`}>
-                    {msg.role} [{msg.timestamp}]
+                    {getSpeakerLabel(msg.role)} [{msg.timestamp}]
                   </span>
                   <div className={`p-4 font-body-bold text-body-main relative ${isA ? 'bg-primary-container text-on-primary-container border-l-4 border-primary' : 'bg-secondary-container text-on-secondary-container border-r-4 border-secondary text-right'}`}>
                     {msg.text.replace(/\[.*\]/g, '')}

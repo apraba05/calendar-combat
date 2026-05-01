@@ -4,9 +4,24 @@ import { useRouter } from 'next/navigation';
 import { TapeData } from '@/types';
 import { getPusherClient } from '@/lib/pusher';
 
+interface FightMeta {
+  challengerPersona: string;
+  opponentPersona: string;
+}
+
+const PERSONA_LABEL: Record<string, string> = {
+  ic: 'INDIVIDUAL CONTRIBUTOR',
+  swe: 'SOFTWARE ENGINEER',
+  team_lead: 'TEAM LEAD',
+  director: 'DIRECTOR',
+  executive: 'EXECUTIVE',
+  intern: 'INTERN',
+};
+
 export default function TaleOfTheTape({ params }: { params: { fightId: string } }) {
   const router = useRouter();
   const [tape, setTape] = useState<TapeData | null>(null);
+  const [meta, setMeta] = useState<FightMeta | null>(null);
   const [waiting, setWaiting] = useState(false);
 
   useEffect(() => {
@@ -17,7 +32,12 @@ export default function TaleOfTheTape({ params }: { params: { fightId: string } 
         setTape(data);
       }
     };
+    const loadMeta = async () => {
+      const res = await fetch(`/api/fight/${params.fightId}/meta`);
+      if (res.ok) setMeta(await res.json());
+    };
     loadTape();
+    loadMeta();
 
     const pusher = getPusherClient();
     const channel = pusher.subscribe(`fight-${params.fightId}`);
@@ -51,6 +71,9 @@ export default function TaleOfTheTape({ params }: { params: { fightId: string } 
 
   const redCard = tape.challengerCard.role === 'MANAGER' ? tape.challengerCard : tape.opponentCard;
   const blueCard = tape.challengerCard.role === 'MANAGER' ? tape.opponentCard : tape.challengerCard;
+  const isChallengerManager = tape.challengerCard.role === 'MANAGER';
+  const redRole = PERSONA_LABEL[isChallengerManager ? (meta?.challengerPersona ?? '') : (meta?.opponentPersona ?? '')] ?? 'RED CORNER';
+  const blueRole = PERSONA_LABEL[isChallengerManager ? (meta?.opponentPersona ?? '') : (meta?.challengerPersona ?? '')] ?? 'BLUE CORNER';
 
   return (
     <div className="min-h-[calc(100vh-80px)] canvas-bg p-8 flex flex-col relative max-w-[1600px] mx-auto">
@@ -65,7 +88,7 @@ export default function TaleOfTheTape({ params }: { params: { fightId: string } 
         {/* RED CORNER */}
         <div className="bg-surface-container border-4 border-primary shadow-[15px_15px_0px_#000] p-8 flex flex-col">
           <div className="bg-primary text-black font-h1-heavy text-4xl italic uppercase text-center py-2 mb-8 skew-x-[-8deg] border-2 border-black">
-            THE MANAGER (RED)
+            {redRole} (RED)
           </div>
           <h2 className="font-h1-heavy text-3xl text-white uppercase italic text-center mb-2">{redCard.archetype}</h2>
           <div className="bg-black border-2 border-outline-variant p-4 font-label-caps text-secondary uppercase tracking-widest text-center mb-8">
@@ -88,7 +111,7 @@ export default function TaleOfTheTape({ params }: { params: { fightId: string } 
         {/* BLUE CORNER */}
         <div className="bg-surface-container border-4 border-secondary-container shadow-[15px_15px_0px_#000] p-8 flex flex-col">
           <div className="bg-secondary-container text-white font-h1-heavy text-4xl italic uppercase text-center py-2 mb-8 skew-x-[8deg] border-2 border-black">
-            THE IC (BLUE)
+            {blueRole} (BLUE)
           </div>
           <h2 className="font-h1-heavy text-3xl text-white uppercase italic text-center mb-2">{blueCard.archetype}</h2>
           <div className="bg-black border-2 border-outline-variant p-4 font-label-caps text-secondary uppercase tracking-widest text-center mb-8">

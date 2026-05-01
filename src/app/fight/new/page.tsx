@@ -68,6 +68,10 @@ const PERSONAS = [
   },
 ];
 
+const roleForPersona = (persona: string): 'MANAGER' | 'IC' => {
+  return persona === 'team_lead' || persona === 'director' || persona === 'executive' ? 'MANAGER' : 'IC';
+};
+
 function StatPips({ value, color }: { value: number; color: string }) {
   return (
     <div className="flex gap-0.5">
@@ -143,7 +147,6 @@ export default function NewFight() {
   const [proposedTime, setProposedTime] = useState('');
   const [importance, setImportance] = useState('medium');
   const [persona, setPersona] = useState('swe');
-  const [selectedRole, setSelectedRole] = useState<'MANAGER' | 'IC'>('MANAGER');
   const [roleCode, setRoleCode] = useState('');
   const [roleCodeError, setRoleCodeError] = useState('');
   const [roleVerified, setRoleVerified] = useState(false);
@@ -156,6 +159,7 @@ export default function NewFight() {
 
   const minDateTime = new Date().toISOString().slice(0, 16);
   const selectedPersona = PERSONAS.find(p => p.value === persona)!;
+  const selectedRole = roleForPersona(persona);
 
   const handlePersonaChange = (val: string) => {
     setPersona(val);
@@ -337,27 +341,6 @@ export default function NewFight() {
                 {selectedPersona.label} role verified
               </div>
             )}
-          </div>
-
-          <div>
-            <label className="font-label-caps text-primary text-xs uppercase mb-3 block">SELECT YOUR ROLE</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedRole('MANAGER')}
-                className={`border-2 p-3 font-black uppercase transition-all ${selectedRole === 'MANAGER' ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant text-outline-variant'}`}
-              >
-                MANAGER
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedRole('IC')}
-                className={`border-2 p-3 font-black uppercase transition-all ${selectedRole === 'IC' ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant text-outline-variant'}`}
-              >
-                IC
-              </button>
-            </div>
-            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">THIS ROLE LOCKS YOUR ARCHETYPE SIDE FOR THE MATCH.</p>
           </div>
 
           {/* Meeting Importance */}
