@@ -13,6 +13,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const isScrolledUpRef = useRef(false);
+  const [currentSpeaker, setCurrentSpeaker] = useState<'MANAGER' | 'IC' | 'COMMENTATOR' | null>(null);
 
   useEffect(() => {
     const fetchTape = async () => {
@@ -30,6 +31,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
     channel.bind('start-turn', (data: any) => {
       currentMsgId = data.id;
       msgBuffer = '';
+      setCurrentSpeaker(data.role);
       if (data.role !== 'COMMENTATOR') {
         setMessages(prev => [...prev, { id: currentMsgId, role: data.role, text: '', timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) }]);
       }
@@ -43,6 +45,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
     });
 
     channel.bind('end-turn', (data: any) => {
+      setCurrentSpeaker(null);
       if (data.role === 'COMMENTATOR') {
         const parts = msgBuffer.split('\n');
         setCommentaryLines(prev => [{
@@ -101,20 +104,32 @@ export default function Arena({ params }: { params: { fightId: string } }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-7 items-center gap-4 relative">
-          <div className="md:col-span-3 bg-surface-container border-4 border-primary p-4 relative overflow-hidden group">
+          <div className={`md:col-span-3 bg-surface-container border-4 border-primary p-4 relative overflow-hidden transition-all duration-300 ${currentSpeaker === 'MANAGER' ? 'ring-4 ring-primary ring-offset-4 ring-offset-black scale-[1.02] bg-primary/10' : ''}`}>
             <div className="absolute top-0 right-0 bg-primary text-on-primary font-black px-4 py-1 skew-x-[-12deg] mr-[-10px] mt-2 z-10">THE MANAGER (RED)</div>
             <h3 className="font-h1-heavy text-3xl text-white uppercase italic mt-4">{redCard.archetype}</h3>
+            {currentSpeaker === 'MANAGER' && (
+              <div className="absolute bottom-2 left-4 text-primary font-lexend font-black text-xs uppercase animate-pulse flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                FORMULATING ARGUMENT...
+              </div>
+            )}
           </div>
 
           <div className="md:col-span-1 flex flex-col items-center justify-center">
-            <div className="w-20 h-20 rounded-full bg-black border-4 border-tertiary flex items-center justify-center vs-glow z-10 my-4">
-              <span className="font-h1-heavy text-tertiary italic">VS</span>
+            <div className={`w-20 h-20 rounded-full bg-black border-4 flex items-center justify-center z-10 my-4 transition-colors duration-500 ${currentSpeaker === 'MANAGER' ? 'border-primary shadow-[0_0_30px_rgba(255,59,48,0.6)]' : currentSpeaker === 'IC' ? 'border-secondary-container shadow-[0_0_30px_rgba(10,132,255,0.6)]' : 'border-tertiary vs-glow'}`}>
+              <span className={`font-h1-heavy italic transition-colors ${currentSpeaker === 'MANAGER' ? 'text-primary' : currentSpeaker === 'IC' ? 'text-secondary-container' : 'text-tertiary'}`}>VS</span>
             </div>
           </div>
 
-          <div className="md:col-span-3 bg-surface-container border-4 border-secondary-container p-4 relative overflow-hidden group">
+          <div className={`md:col-span-3 bg-surface-container border-4 border-secondary-container p-4 relative overflow-hidden transition-all duration-300 ${currentSpeaker === 'IC' ? 'ring-4 ring-secondary-container ring-offset-4 ring-offset-black scale-[1.02] bg-secondary-container/10' : ''}`}>
             <div className="absolute top-0 left-0 bg-secondary-container text-white font-black px-4 py-1 skew-x-[12deg] ml-[-10px] mt-2 z-10">THE IC (BLUE)</div>
             <h3 className="font-h1-heavy text-3xl text-white uppercase italic mt-4 text-right">{blueCard.archetype}</h3>
+            {currentSpeaker === 'IC' && (
+              <div className="absolute bottom-2 right-4 text-secondary-container font-lexend font-black text-xs uppercase animate-pulse flex items-center gap-2">
+                FORMULATING COUNTER...
+                <span className="w-2 h-2 rounded-full bg-secondary-container animate-ping"></span>
+              </div>
+            )}
           </div>
         </div>
 
