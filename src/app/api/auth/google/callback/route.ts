@@ -20,8 +20,12 @@ export async function GET(req: NextRequest) {
 
   try {
     const state = JSON.parse(Buffer.from(stateStr, 'base64').toString('ascii'));
-    const tokens = await getTokens(code, req);
-    const userInfo = await getUserInfo(tokens);
+    const rawTokens = await getTokens(code, req);
+    const userInfo = await getUserInfo(rawTokens);
+
+    const tokens = rawTokens.access_token
+      ? { access_token: rawTokens.access_token, refresh_token: rawTokens.refresh_token ?? undefined, expiry_date: rawTokens.expiry_date ?? undefined }
+      : undefined;
 
     const sessionId = randomUUID();
     getSessionStore().set(sessionId, {
