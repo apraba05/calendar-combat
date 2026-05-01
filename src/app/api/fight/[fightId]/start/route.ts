@@ -86,10 +86,10 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
       let validTurn = false;
       let agentText = '';
       let attempts = 0;
+      const msgId = randomUUID();
 
       while (!validTurn && attempts < 3) {
         attempts++;
-        const msgId = randomUUID();
         agentText = '';
         
         if (pusherServer) {
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
       }
 
       chatHistory += `\n${labelForRole(currentRole)}: ${agentText}`;
-      fight.transcript.push({ id: randomUUID(), role: currentRole, text: agentText, timestamp: new Date().toISOString() });
+      fight.transcript.push({ id: msgId, role: currentRole, text: agentText, timestamp: new Date().toISOString() });
       broadcastToChat(`${currentRole === 'MANAGER' ? '🟥' : '🟦'} ${labelForRole(currentRole)}: "${agentText.replace(/\[.*\]/g, '')}"`);
 
       if (agentText.includes('[AGREEMENT:') || agentText.includes('[WALKAWAY]')) {
@@ -158,7 +158,7 @@ export async function POST(req: NextRequest, { params }: { params: { fightId: st
         
         if (pusherServer) pusherServer.trigger(`fight-${fight.id}`, 'end-turn', { id: commMsgId, role: 'COMMENTATOR', text: stableCommText });
         
-        fight.transcript.push({ id: randomUUID(), role: 'COMMENTATOR', text: stableCommText, timestamp: new Date().toISOString() });
+        fight.transcript.push({ id: commMsgId, role: 'COMMENTATOR', text: stableCommText, timestamp: new Date().toISOString() });
         const parts = stableCommText.split('\n');
         broadcastToChat(parts[1] || parts[0], `🎙️ ${parts[0]}`);
       }

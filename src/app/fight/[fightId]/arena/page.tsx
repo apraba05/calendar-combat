@@ -163,14 +163,19 @@ export default function Arena({ params }: { params: { fightId: string } }) {
       msgBuffer = '';
       setCurrentSpeaker(data.role);
       if (data.role !== 'COMMENTATOR') {
-        setMessages(prev => [...prev, { id: currentMsgId, role: data.role, text: '', timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) }]);
+        setMessages(prev => {
+          if (prev.find(m => m.id === currentMsgId)) return prev;
+          return [...prev, { id: currentMsgId, role: data.role, text: '', timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) }];
+        });
       }
     });
 
     channel.bind('chunk', (data: any) => {
-      msgBuffer += data.text;
-      if (data.role !== 'COMMENTATOR') {
-        setMessages(prev => prev.map(m => m.id === currentMsgId ? { ...m, text: msgBuffer } : m));
+      if (data.id === currentMsgId) {
+        msgBuffer += data.text;
+        if (data.role !== 'COMMENTATOR') {
+          setMessages(prev => prev.map(m => m.id === currentMsgId ? { ...m, text: msgBuffer } : m));
+        }
       }
     });
 
@@ -179,7 +184,8 @@ export default function Arena({ params }: { params: { fightId: string } }) {
       if (data.role !== 'COMMENTATOR') {
         setMessages(prev => prev.map(m => m.id === data.id ? { ...m, text: data.text || m.text } : m));
       } else {
-        const parts = (msgBuffer || data.text || '').split('\n');
+        const fullComm = data.text || msgBuffer;
+        const parts = fullComm.split('\n');
         setCommentaryLines(prev => [{
           timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}),
           main: parts[0] || '',
@@ -193,27 +199,22 @@ export default function Arena({ params }: { params: { fightId: string } }) {
       setTimeout(() => router.push(`/fight/${params.fightId}/verdict`), 2000);
     });
 
-    return () => {
-      channel.unbind_all();
-      pusher.unsubscribe(`fight-${params.fightId}`);
-    };
-  }, [params.fightId, router]);
-
-  useEffect(() => {
-    const poll = setInterval(async () => {
+    // ── Unified State Synchronization ──
+    const syncState = async () => {
       try {
         const res = await fetch(`/api/fight/${params.fightId}/state`, { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
+        
         if (data.status === 'verdict' || data.verdictReady) {
           router.push(`/fight/${params.fightId}/verdict`);
           return;
         }
+
         const transcript = Array.isArray(data.transcript) ? data.transcript : [];
         const nonCommentary = transcript.filter((m: any) => m.role !== 'COMMENTATOR');
         const commentary = transcript.filter((m: any) => m.role === 'COMMENTATOR');
-        // Merge completed transcript entries without overwriting in-progress Pusher messages.
-        // Only add messages whose IDs aren't already tracked by Pusher.
+
         setMessages(prev => {
           const existingIds = new Set(prev.map(m => m.id));
           const incoming: ChatMessage[] = nonCommentary.map((m: any) => ({
@@ -222,17 +223,18 @@ export default function Arena({ params }: { params: { fightId: string } }) {
             text: m.text,
             timestamp: formatTs(m.timestamp),
           }));
-          // Update text for messages we already have (transcript is source of truth for completed turns),
-          // and append any that arrived via transcript but were missed by Pusher.
+
           const updated = prev.map(m => {
             const fromTranscript = incoming.find((t: ChatMessage) => t.id === m.id);
+            // If message is finished in transcript, use that text.
             return fromTranscript ? { ...m, text: fromTranscript.text } : m;
           });
+
           const missing = incoming.filter((t: ChatMessage) => !existingIds.has(t.id));
           return missing.length ? [...updated, ...missing] : updated;
         });
+
         setCommentaryLines(prev => {
-          const existingIds = new Set(prev.map((_, i) => i)); // commentary has no stable IDs
           const incoming = commentary.map((m: any) => {
             const parts = String(m.text || '').split('\n');
             return {
@@ -242,13 +244,24 @@ export default function Arena({ params }: { params: { fightId: string } }) {
               role: 'COMMENTATOR',
             };
           }).reverse();
-          // Only replace if the transcript has more entries than we currently show.
-          return incoming.length > prev.length ? incoming : prev;
+          // Always pick the one with more data, or refresh if local is empty (initial load)
+          return (incoming.length > prev.length || prev.length === 0) ? incoming : prev;
         });
-      } catch {}
-    }, 2000);
-    return () => clearInterval(poll);
+      } catch (err) {
+        console.error("State sync failed:", err);
+      }
+    };
+
+    syncState(); // Initial sync
+    const poll = setInterval(syncState, 3000);
+
+    return () => {
+      clearInterval(poll);
+      channel.unbind_all();
+      pusher.unsubscribe(`fight-${params.fightId}`);
+    };
   }, [params.fightId, router]);
+
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;
