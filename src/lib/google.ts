@@ -69,16 +69,28 @@ export const getCalendarData = async (tokens: any): Promise<CalendarEvent[]> => 
   const twoWeeks = addDays(now, 14);
 
   try {
-    const res = await calendar.events.list({
-      calendarId: 'primary',
-      timeMin: now.toISOString(),
-      timeMax: twoWeeks.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
+    const calListRes = await calendar.calendarList.list({ minAccessRole: 'freeBusyReader' });
+    const calendarIds = (calListRes.data.items || []).map(c => c.id!).filter(Boolean);
+    if (calendarIds.length === 0) calendarIds.push('primary');
 
-    const items = res.data.items || [];
-    return items.map(e => ({
+    const timeMin = now.toISOString();
+    const timeMax = twoWeeks.toISOString();
+
+    const allItems = await Promise.all(
+      calendarIds.map(calendarId =>
+        calendar.events.list({ calendarId, timeMin, timeMax, singleEvents: true, orderBy: 'startTime' })
+          .then(r => r.data.items || [])
+          .catch(() => [])
+      )
+    );
+
+    const seen = new Set<string>();
+    return allItems.flat().filter(e => {
+      const key = e.id!;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).map(e => ({
       id: e.id!,
       summary: e.summary || 'Busy',
       start: new Date(e.start?.dateTime || e.start?.date || now),
