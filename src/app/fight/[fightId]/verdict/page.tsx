@@ -18,6 +18,9 @@ interface JudgeVerdict {
 export default function Verdict({ params }: { params: { fightId: string } }) {
   const [verdict, setVerdict] = useState<JudgeVerdict | null>(null);
   const [decision, setDecision] = useState<'scheduled' | 'skipped' | null>(null);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleError, setScheduleError] = useState('');
+  const [eventLink, setEventLink] = useState('');
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
@@ -31,14 +34,31 @@ export default function Verdict({ params }: { params: { fightId: string } }) {
     fetchVerdict();
   }, [params.fightId]);
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (!verdict?.recommendedTime) return;
-    const start = new Date(verdict.recommendedTime);
-    const end = new Date(start.getTime() + verdict.meetingDetails.durationMinutes * 60000);
-    const fmt = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, '');
-    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(verdict.meetingDetails.status === 'MEETING RECOMMENDED' ? 'Scheduled via Calendar Combat' : 'Meeting')}&dates=${fmt(start)}/${fmt(end)}`;
-    window.open(url, '_blank');
-    setDecision('scheduled');
+    setScheduling(true);
+    setScheduleError('');
+    try {
+      const res = await fetch(`/api/fight/${params.fightId}/schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dateTime: verdict.recommendedTime,
+          durationMinutes: verdict.meetingDetails.durationMinutes,
+          subject: verdict.meetingDetails.status,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEventLink(data.link || '');
+        setDecision('scheduled');
+      } else {
+        setScheduleError(data.error || 'Failed to create event.');
+      }
+    } catch {
+      setScheduleError('Network error. Try again.');
+    }
+    setScheduling(false);
   };
 
   const handleEmailSummary = () => {
@@ -143,20 +163,26 @@ View the full replay: ${window.location.origin}/replays/${params.fightId}
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={handleSchedule}
-                disabled={!verdict.recommendedTime}
+                disabled={!verdict.recommendedTime || scheduling}
                 className="bg-green-700 text-white font-black text-xl py-6 uppercase italic hover:bg-green-500 transition-colors shadow-[5px_5px_0px_#000] flex items-center justify-center gap-3 disabled:opacity-40"
               >
-                <span className="material-symbols-outlined">calendar_add_on</span>
-                SCHEDULE IT
+                <span className="material-symbols-outlined">event_available</span>
+                {scheduling ? 'SCHEDULING...' : 'SCHEDULE IT'}
               </button>
               <button
                 onClick={() => setDecision('skipped')}
-                className="bg-surface-container-highest border-4 border-outline-variant text-white font-black text-xl py-6 uppercase italic hover:border-white transition-colors shadow-[5px_5px_0px_#000] flex items-center justify-center gap-3"
+                disabled={scheduling}
+                className="bg-surface-container-highest border-4 border-outline-variant text-white font-black text-xl py-6 uppercase italic hover:border-white transition-colors shadow-[5px_5px_0px_#000] flex items-center justify-center gap-3 disabled:opacity-40"
               >
                 <span className="material-symbols-outlined">close</span>
                 SKIP IT
               </button>
             </div>
+            {scheduleError && (
+              <div className="mt-4 bg-red-900/20 border-2 border-red-600 p-3 text-center">
+                <p className="text-red-400 font-label-caps text-xs font-bold uppercase">{scheduleError}</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className={`border-4 p-8 text-center shadow-[10px_10px_0px_#000] ${decision === 'scheduled' ? 'bg-green-900/30 border-green-500' : 'bg-red-900/30 border-red-600'}`}>
@@ -166,9 +192,14 @@ View the full replay: ${window.location.origin}/replays/${params.fightId}
             <h3 className={`font-lexend font-black text-4xl italic uppercase ${decision === 'scheduled' ? 'text-green-400' : 'text-red-500'}`}>
               {decision === 'scheduled' ? 'MEETING SCHEDULED' : 'MEETING SKIPPED'}
             </h3>
-            <p className="text-outline-variant mt-2 font-label-caps tracking-widest text-sm">
-              {decision === 'scheduled' ? 'CHECK YOUR GOOGLE CALENDAR FOR THE INVITE.' : 'THE JUDGE\'S RULING STANDS. NO MEETING.'}
+            <p className="text-outline-variant mt-2 mb-4 font-label-caps tracking-widest text-sm">
+              {decision === 'scheduled' ? 'THE EVENT HAS BEEN ADDED DIRECTLY TO YOUR GOOGLE CALENDAR.' : 'THE JUDGE\'S RULING STANDS. NO MEETING.'}
             </p>
+            {decision === 'scheduled' && eventLink && (
+              <a href={eventLink} target="_blank" rel="noopener noreferrer" className="inline-block bg-green-700 text-white font-black px-6 py-3 uppercase italic hover:bg-green-500 transition-colors">
+                VIEW CALENDAR EVENT
+              </a>
+            )}
           </div>
         )}
 
