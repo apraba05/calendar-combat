@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFight, setFight } from '@/lib/fightStore';
 import { addHistory } from '@/lib/historyStore';
 import { generateJson } from '@/lib/gemini';
-import { VERDICT_PROMPT } from '@/lib/prompts';
+import { getJudgePrompt } from '@/lib/prompts';
 import { broadcastToChat } from '@/lib/chatBroadcast';
-import { getCreateEventUrl } from '@/lib/google';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,48 +13,54 @@ export async function GET(req: NextRequest, { params }: { params: { fightId: str
 
   if (fight.verdictData) return NextResponse.json(fight.verdictData);
 
-  const transcriptStr = fight.transcript.map(t => `${t.role}: ${t.text}`).join('\n');
-  const json = await generateJson(`${VERDICT_PROMPT}\n\nTranscript:\n${transcriptStr}`);
+  const transcriptStr = fight.transcript
+    .filter(t => t.role !== 'COMMENTATOR')
+    .map(t => `${t.role}: ${t.text}`)
+    .join('\n');
 
-  const lastMsg = fight.transcript[fight.transcript.length - 1];
-  let winnerRole: 'MANAGER' | 'IC' | 'DRAW' = 'DRAW';
-  let winnerName = 'STALEMATE';
-  let status = 'STALEMATE';
-  let meetingTime = '';
+  const { challengerCard, opponentCard } = fight.tapeData || { challengerCard: null, opponentCard: null };
+  const managerCard = challengerCard?.role === 'MANAGER' ? challengerCard : opponentCard;
+  const icCard = challengerCard?.role === 'MANAGER' ? opponentCard : challengerCard;
 
-  const agreementMatch = transcriptStr.match(/\[AGREEMENT:\s*(.+?),\s*(\d+)\]/);
-  if (agreementMatch) {
-    status = 'AGREEMENT REACHED';
-    meetingTime = agreementMatch[1];
-    winnerRole = lastMsg?.role as 'MANAGER' | 'IC';
-    winnerName = winnerRole === 'MANAGER' ? 'THE MANAGER' : 'THE IC';
-  } else if (transcriptStr.includes('[WALKAWAY]')) {
-    status = 'WALKAWAY';
-  }
+  const judgePrompt = getJudgePrompt(
+    fight.config,
+    managerCard?.rawEvents || [],
+    icCard?.rawEvents || [],
+    fight.config.proposedTime
+  );
+
+  const json = await generateJson(`${judgePrompt}\n\nFULL TRANSCRIPT:\n${transcriptStr}`);
+
+  const ruling = json?.ruling || 'DRAW';
+  const winnerName = ruling === 'MANAGER_WINS' ? 'THE MANAGER' : ruling === 'IC_WINS' ? 'THE IC' : 'DRAW';
+  const winnerRole: 'MANAGER' | 'IC' | 'DRAW' = ruling === 'MANAGER_WINS' ? 'MANAGER' : ruling === 'IC_WINS' ? 'IC' : 'DRAW';
 
   const verdict = {
     winnerRole,
     winnerName,
+    judgeRationale: json?.rationale || 'The judge is speechless.',
+    judgeQuote: json?.judgeQuote || 'A shameful display of corporate maneuvering.',
+    recommendMeeting: json?.recommendMeeting ?? false,
+    recommendedTime: json?.recommendedTime || null,
+    conflictsFound: json?.conflictsFound || [],
     stats: json?.stats || { persistence: 50, passiveAggression: 50, schedulingBrutality: 50, bccLethality: 50 },
-    savageQuote: json?.savageQuote || "A shameful display of corporate cowardice.",
+    savageQuote: json?.judgeQuote || 'No comment.',
     meetingDetails: {
-      date: meetingTime ? meetingTime.split(' ')[0] : '',
-      time: meetingTime ? meetingTime.split(' ')[1] : '',
+      date: json?.recommendedTime ? json.recommendedTime.split(' ')[0] : '',
+      time: json?.recommendedTime ? json.recommendedTime.split(' ')[1] : '',
       durationMinutes: fight.config.durationMinutes,
-      status
+      status: json?.recommendMeeting ? 'MEETING RECOMMENDED' : 'NO MEETING RECOMMENDED'
     }
   };
 
-  fight.verdictData = verdict;
+  fight.verdictData = verdict as any;
   setFight(fight.id, fight);
   addHistory(fight);
 
-  if (meetingTime && fight.opponent) {
-    const url = getCreateEventUrl(fight.config.subject, meetingTime, fight.config.durationMinutes, [fight.challenger.email, fight.opponent.email]);
-    broadcastToChat(`The fight has concluded. ${status} at ${meetingTime}.\n\nAdd to calendar: ${url}`, "VERDICT RENDERED", "Click to Schedule");
-  } else {
-    broadcastToChat(`The fight ended in a bloody stalemate.`, "VERDICT RENDERED");
-  }
+  broadcastToChat(
+    `The judge has spoken. Ruling: ${ruling}. ${verdict.meetingDetails.status}.`,
+    "JUDGE'S VERDICT"
+  );
 
   return NextResponse.json(verdict);
 }
