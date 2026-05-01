@@ -61,6 +61,17 @@ export default function Verdict({ params }: { params: { fightId: string } }) {
     setScheduling(false);
   };
 
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = () => {
+    if (!verdict) return;
+    const url = `${window.location.origin}/replays/${params.fightId}`;
+    const text = `🥊 CALENDAR COMBAT VERDICT: ${verdict.winnerName} DOMINATED THE RING!\n\n"${verdict.savageQuote || verdict.judgeQuote}"\n\nFull replay: ${url}`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleEmailSummary = async () => {
     if (!verdict) return;
     setSendingEmail(true);
@@ -213,6 +224,14 @@ export default function Verdict({ params }: { params: { fightId: string } }) {
 
         {/* Action Row */}
         <div className="flex flex-col gap-3">
+          <button
+            onClick={handleShare}
+            className="w-full bg-white text-black font-black py-5 uppercase italic text-2xl transition-all flex items-center justify-center gap-3 shadow-[10px_10px_0px_#cc1111] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[12px_12px_0px_#cc1111] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[5px_5px_0px_#cc1111]"
+          >
+            <span className="material-symbols-outlined text-3xl">content_copy</span>
+            {copied ? 'COPIED TO CLIPBOARD!' : 'SHARE THE SAVAGERY'}
+          </button>
+
           <button
             onClick={handleEmailSummary}
             disabled={emailSent || sendingEmail}

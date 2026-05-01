@@ -179,7 +179,7 @@ export default function Arena({ params }: { params: { fightId: string } }) {
       if (data.role !== 'COMMENTATOR') {
         setMessages(prev => prev.map(m => m.id === data.id ? { ...m, text: data.text || m.text } : m));
       } else {
-        const parts = msgBuffer.split('\n');
+        const parts = (msgBuffer || data.text || '').split('\n');
         setCommentaryLines(prev => [{
           timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}),
           main: parts[0] || '',
@@ -212,21 +212,39 @@ export default function Arena({ params }: { params: { fightId: string } }) {
         const transcript = Array.isArray(data.transcript) ? data.transcript : [];
         const nonCommentary = transcript.filter((m: any) => m.role !== 'COMMENTATOR');
         const commentary = transcript.filter((m: any) => m.role === 'COMMENTATOR');
-        setMessages(nonCommentary.map((m: any) => ({
-          id: m.id,
-          role: m.role,
-          text: m.text,
-          timestamp: formatTs(m.timestamp),
-        })));
-        setCommentaryLines(commentary.map((m: any) => {
-          const parts = String(m.text || '').split('\n');
-          return {
+        // Merge completed transcript entries without overwriting in-progress Pusher messages.
+        // Only add messages whose IDs aren't already tracked by Pusher.
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id));
+          const incoming = nonCommentary.map((m: any) => ({
+            id: m.id,
+            role: m.role,
+            text: m.text,
             timestamp: formatTs(m.timestamp),
-            main: parts[0] || '',
-            sub: parts[1] || '',
-            role: 'COMMENTATOR',
-          };
-        }).reverse());
+          }));
+          // Update text for messages we already have (transcript is source of truth for completed turns),
+          // and append any that arrived via transcript but were missed by Pusher.
+          const updated = prev.map(m => {
+            const fromTranscript = incoming.find(t => t.id === m.id);
+            return fromTranscript ? { ...m, text: fromTranscript.text } : m;
+          });
+          const missing = incoming.filter(t => !existingIds.has(t.id));
+          return missing.length ? [...updated, ...missing] : updated;
+        });
+        setCommentaryLines(prev => {
+          const existingIds = new Set(prev.map((_, i) => i)); // commentary has no stable IDs
+          const incoming = commentary.map((m: any) => {
+            const parts = String(m.text || '').split('\n');
+            return {
+              timestamp: formatTs(m.timestamp),
+              main: parts[0] || '',
+              sub: parts[1] || '',
+              role: 'COMMENTATOR',
+            };
+          }).reverse();
+          // Only replace if the transcript has more entries than we currently show.
+          return incoming.length > prev.length ? incoming : prev;
+        });
       } catch {}
     }, 2000);
     return () => clearInterval(poll);
@@ -266,6 +284,14 @@ export default function Arena({ params }: { params: { fightId: string } }) {
     }
     setIsScrolledUp(false);
     isScrolledUpRef.current = false;
+  };
+
+  const [copied, setCopied] = useState(false);
+  const handleShare = () => {
+    const url = `${window.location.origin}/fight/${params.fightId}/arena`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (!tape) return <div className="min-h-screen canvas-bg" />;
@@ -477,6 +503,13 @@ export default function Arena({ params }: { params: { fightId: string } }) {
               ))}
             </div>
           </div>
+          <button
+            onClick={handleShare}
+            className="w-full bg-secondary-container text-white font-black py-4 uppercase italic flex items-center justify-center gap-2 hover:bg-white hover:text-black transition-all border-t-2 border-outline-variant"
+          >
+            <span className="material-symbols-outlined text-sm">{copied ? 'check' : 'share'}</span>
+            {copied ? 'LINK COPIED' : 'SHARE SPECTATOR LINK'}
+          </button>
         </div>
       </aside>
     </div>

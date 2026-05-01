@@ -41,9 +41,13 @@ export default function Home() {
 
       <div className="absolute bottom-0 w-full bg-black border-t-2 border-primary py-2 overflow-hidden whitespace-nowrap">
         <div className="animate-marquee inline-block font-label-caps text-xs text-white tracking-[0.2em]">
+          <span className="text-primary mx-4">●</span> "THIS COULD HAVE BEEN AN EMAIL" — THE JUDGE
           <span className="text-primary mx-4">●</span> MEETINGS NEGOTIATED TONIGHT: 1,247
+          <span className="text-primary mx-4">●</span> "YOUR CALENDAR IS A WORK OF FICTION"
           <span className="text-primary mx-4">●</span> AVERAGE FIGHT DURATION: 47 SECONDS
+          <span className="text-primary mx-4">●</span> "I'M NOT FLEXIBLE, I'M JUST POLITE"
           <span className="text-primary mx-4">●</span> LONGEST RECORDED STALEMATE: 12 ROUNDS
+          <span className="text-primary mx-4">●</span> "CIRCLING BACK TO YOUR DEFEAT"
         </div>
       </div>
     </div>

@@ -69,6 +69,62 @@ const generateXaiText = async (prompt: string, maxTokens = XAI_MAX_OUTPUT_TOKENS
   return String(data?.choices?.[0]?.message?.content || '').trim() || null;
 };
 
+const streamXaiText = async (prompt: string, onChunk: (text: string) => void, maxTokens = XAI_MAX_OUTPUT_TOKENS): Promise<string | null> => {
+  const apiKey = process.env.XAI_API_KEY;
+  if (!apiKey) return null;
+
+  const res = await fetch(`${xaiBaseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: xaiModel,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: maxTokens,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`xAI stream request failed (${res.status}): ${body.slice(0, 500)}`);
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) return null;
+
+  const decoder = new TextDecoder();
+  let fullText = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const raw = decoder.decode(value, { stream: true });
+      for (const line of raw.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6).trim();
+        if (payload === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(payload);
+          const token = parsed?.choices?.[0]?.delta?.content || '';
+          if (token) {
+            fullText += token;
+            onChunk(token);
+          }
+        } catch {}
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return fullText.trim() || null;
+};
+
 export const generateJson = async (prompt: string): Promise<any> => {
   await acquireGeminiSlot();
   try {
@@ -145,16 +201,17 @@ export const streamText = async (prompt: string, history: string = '', onChunk: 
   try {
     const model = genAI.getGenerativeModel({ model: usingFallbackModel ? fallbackModel : primaryModel });
     const fallback = await model.generateContent(fullPrompt);
-    const text = fallback.response.text() || '';
-    return text.trim() || 'Unable to continue the argument at this moment.';
+    const text = (fallback.response.text() || '').trim();
+    if (text) {
+      onChunk(text);
+      return text;
+    }
+    throw new Error('Gemini non-streaming fallback returned empty text');
   } catch (e) {
     console.error('Gemini Fallback Generation Error:', e);
     try {
-      const text = await generateXaiText(fullPrompt);
-      if (text) {
-        onChunk(text);
-        return text;
-      }
+      const text = await streamXaiText(fullPrompt, onChunk);
+      if (text) return text;
     } catch (xaiError) {
       console.error('xAI Fallback Generation Error:', xaiError);
     }
