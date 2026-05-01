@@ -1,4 +1,4 @@
-// v2.1 — proposed time, importance, bot stance
+// v2.2 — removed urgency, improved duration picker
 "use client";
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,11 +11,19 @@ const IMPORTANCE_OPTIONS = [
   { value: 'critical', label: 'CRITICAL', desc: 'Drop everything', color: 'border-red-500 text-red-400' },
 ];
 
+const DURATION_OPTIONS = [
+  { value: '15', label: '15', sublabel: 'Quick sync' },
+  { value: '30', label: '30', sublabel: 'Standard' },
+  { value: '45', label: '45', sublabel: 'Workshop' },
+  { value: '60', label: '60', sublabel: 'Deep dive' },
+  { value: '90', label: '90', sublabel: 'Half-day' },
+  { value: '120', label: '120', sublabel: 'Full session' },
+];
+
 export default function NewFight() {
   const router = useRouter();
   const [subject, setSubject] = useState('');
   const [duration, setDuration] = useState('30');
-  const [urgency, setUrgency] = useState('this_week');
   const [proposedTime, setProposedTime] = useState('');
   const [importance, setImportance] = useState('medium');
   const [loading, setLoading] = useState(false);
@@ -36,7 +44,7 @@ export default function NewFight() {
     const res = await fetch('/api/fight/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, durationMinutes: duration, urgency, description: '', proposedTime, importance })
+      body: JSON.stringify({ subject, durationMinutes: duration, urgency: 'this_week', description: '', proposedTime, importance })
     });
     
     if (res.status === 401) {
@@ -137,23 +145,25 @@ export default function NewFight() {
             <p className="text-[10px] text-outline-variant mt-1 font-label-caps">HIGHER IMPORTANCE = YOUR BOT FIGHTS HARDER AND REFUSES TO ACCEPT A WALKAWAY.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="font-label-caps text-primary text-xs uppercase mb-2 block">DURATION (MIN)</label>
-              <select value={duration} onChange={e => setDuration(e.target.value)} className="w-full bg-black border-2 border-outline-variant p-4 text-white focus:border-primary focus:outline-none font-body-bold">
-                <option value="15">15</option>
-                <option value="30">30</option>
-                <option value="45">45</option>
-                <option value="60">60</option>
-              </select>
-            </div>
-            <div>
-              <label className="font-label-caps text-primary text-xs uppercase mb-2 block">URGENCY</label>
-              <select value={urgency} onChange={e => setUrgency(e.target.value)} className="w-full bg-black border-2 border-outline-variant p-4 text-white focus:border-primary focus:outline-none font-body-bold">
-                <option value="this_week">THIS WEEK</option>
-                <option value="next_two_weeks">NEXT 14 DAYS</option>
-                <option value="flexible">FLEXIBLE</option>
-              </select>
+          <div>
+            <label className="font-label-caps text-primary text-xs uppercase mb-3 block">MEETING DURATION</label>
+            <div className="grid grid-cols-3 gap-3">
+              {DURATION_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setDuration(opt.value)}
+                  className={`border-2 p-4 flex flex-col items-center justify-center gap-1 transition-all hover:border-white ${
+                    duration === opt.value
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-outline-variant text-outline-variant'
+                  }`}
+                >
+                  <span className="font-lexend font-black text-3xl">{opt.label}</span>
+                  <span className="text-[11px] uppercase tracking-wider opacity-70">MIN</span>
+                  <span className="text-[10px] opacity-60">{opt.sublabel}</span>
+                </button>
+              ))}
             </div>
           </div>
           
