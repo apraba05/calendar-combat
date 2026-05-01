@@ -67,7 +67,7 @@ export default function RootLayout({
                 <span className="font-lexend text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">RING RULES</span>
                 <span className="font-lexend text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">TERMS OF COMBAT</span>
               </div>
-              <p className="font-lexend text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">© 2024 CALENDAR COMBAT. ALL RIGHTS RESERVED. NO MERCY FOR OVERLAPS.</p>
+              <p className="font-lexend text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">© 2026 CALENDAR COMBAT. ALL RIGHTS RESERVED. NO MERCY FOR OVERLAPS.</p>
             </footer>
           </main>
         </div>
