@@ -39,16 +39,7 @@ export default function RootLayout({
                 <p className="font-label-caps text-[10px] text-red-500">12-0 UNDEFEATED</p>
               </div>
             </div>
-            <nav className="flex-1 flex flex-col gap-2 py-8">
-              <a className="bg-red-600 text-white font-black -skew-x-6 mx-2 px-8 py-3 flex items-center gap-4 shadow-lg" href="/">
-                <span className="material-symbols-outlined">sports_kabaddi</span>
-                <span className="font-lexend font-bold uppercase">FIGHT CARD</span>
-              </a>
-              <a className="text-slate-400 hover:text-white px-8 py-3 flex items-center gap-4 group hover:translate-x-2 transition-transform duration-150" href="/profile">
-                <span className="material-symbols-outlined group-hover:text-red-500">fitness_center</span>
-                <span className="font-lexend font-bold uppercase">TRAINING CAMP</span>
-              </a>
-            </nav>
+            <div className="flex-1" />
             <div className="p-4">
               <a href="/api/auth/google?action=login" className="block text-center w-full bg-transparent border-2 border-red-600 text-red-600 font-black py-4 hover:bg-red-600 hover:text-white transition-all uppercase italic tracking-widest">
                 NEW CHALLENGE
