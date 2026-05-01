@@ -10,6 +10,9 @@ export default function Arena({ params }: { params: { fightId: string } }) {
   const [commentaryLines, setCommentaryLines] = useState<{timestamp: string; main: string; sub: string; role: string}[]>([]);
   const [tape, setTape] = useState<TapeData | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const isScrolledUpRef = useRef(false);
 
   useEffect(() => {
     const fetchTape = async () => {
@@ -61,9 +64,25 @@ export default function Arena({ params }: { params: { fightId: string } }) {
     };
   }, [params.fightId, router]);
 
+  const handleScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    isScrolledUpRef.current = !nearBottom;
+    setIsScrolledUp(!nearBottom);
+  };
+
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!isScrolledUpRef.current) {
+      endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
+
+  const jumpToLatest = () => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setIsScrolledUp(false);
+    isScrolledUpRef.current = false;
+  };
 
   if (!tape) return <div className="min-h-screen canvas-bg" />;
 
@@ -100,7 +119,11 @@ export default function Arena({ params }: { params: { fightId: string } }) {
         </div>
 
         <div className="bg-surface-container-low border-2 border-outline-variant flex flex-col h-[500px] relative">
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto p-6 space-y-6"
+          >
             {messages.map((msg, i) => {
               const isA = msg.role === 'MANAGER';
               return (
@@ -118,6 +141,15 @@ export default function Arena({ params }: { params: { fightId: string } }) {
             })}
             <div ref={endRef} />
           </div>
+          {isScrolledUp && (
+            <button
+              onClick={jumpToLatest}
+              className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-primary text-black font-black text-xs uppercase px-4 py-2 shadow-lg animate-bounce flex items-center gap-2 z-10"
+            >
+              <span className="material-symbols-outlined text-sm">arrow_downward</span>
+              JUMP TO LATEST
+            </button>
+          )}
         </div>
       </div>
 
