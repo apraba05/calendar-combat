@@ -19,7 +19,13 @@ export async function GET(req: NextRequest, { params }: { params: { fightId: str
   const user = isChallenger ? fight.challenger : fight.opponent;
   if (!user?.tokens) return NextResponse.json({ error: 'No calendar tokens' }, { status: 400 });
 
-  const raw = await getCalendarData(user.tokens);
+  let raw;
+  try {
+    raw = await getCalendarData(user.tokens);
+  } catch (e: any) {
+    console.error('getCalendarData failed:', e);
+    return NextResponse.json({ error: 'Calendar fetch failed', detail: e?.message }, { status: 500 });
+  }
 
   const events = raw.map(e => ({
     eventId: e.id,

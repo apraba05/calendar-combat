@@ -96,6 +96,7 @@ export default function Priorities({ params }: { params: { fightId: string } }) 
       })
       .then(data => {
         if (!data) return;
+        if (data.error) { setError(`Calendar error: ${data.detail || data.error}`); setLoading(false); return; }
         const evts: CalEvent[] = data.events || [];
         setEvents(evts);
         const defaults: Record<string, PriorityLevel> = {};
@@ -103,7 +104,7 @@ export default function Priorities({ params }: { params: { fightId: string } }) 
         setPriorities(defaults);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((e) => { setError(`Failed to load calendar: ${e.message}`); setLoading(false); });
 
     const pusher = getPusherClient();
     const channel = pusher.subscribe(`fight-${params.fightId}`);

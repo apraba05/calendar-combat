@@ -15,6 +15,7 @@ export const getAuthUrl = (state: string, req: any) => {
   );
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
+    prompt: 'consent',
     scope: [
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/calendar.events',
@@ -100,7 +101,7 @@ export const getCalendarData = async (tokens: any): Promise<CalendarEvent[]> => 
     }));
   } catch (e) {
     console.error("Calendar fetch error:", e);
-    return [];
+    throw e;
   }
 };
 
