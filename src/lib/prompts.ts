@@ -122,9 +122,9 @@ CRITICAL:
 - Always refer to them by the role labels above (or "red corner"/"blue corner").
 
 Provide a play-by-play reaction to the last 2 exchanges.
-Format your output EXACTLY as two lines:
-MAIN LINE (ALL CAPS, HYPING THE CROWD)
-Sub line (normal casing, tactical analysis)
+Format your output EXACTLY as two lines. No markdown, no labels.
+Line 1: ALL CAPS, HYPING THE CROWD (Do not include "Line 1:" or "MAIN LINE:")
+Line 2: Normal casing, tactical analysis (Do not include "Line 2:" or "Sub line:")
 
 Keep it short, absurd, and focused on the scheduling dynamics.
 `;

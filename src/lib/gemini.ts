@@ -98,13 +98,17 @@ const streamXaiText = async (prompt: string, onChunk: (text: string) => void, ma
 
   const decoder = new TextDecoder();
   let fullText = '';
+  let buffer = '';
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const raw = decoder.decode(value, { stream: true });
-      for (const line of raw.split('\n')) {
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; // Keep incomplete line in buffer
+      
+      for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const payload = line.slice(6).trim();
         if (payload === '[DONE]') continue;
@@ -176,13 +180,21 @@ export const streamText = async (prompt: string, history: string = '', onChunk: 
       const model = genAI.getGenerativeModel({ model: usingFallbackModel ? fallbackModel : primaryModel });
       const result = await model.generateContentStream(fullPrompt);
       let fullText = '';
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
-        fullText += chunkText;
-        onChunk(chunkText);
+      try {
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          fullText += chunkText;
+          onChunk(chunkText);
+        }
+        if (fullText.trim()) return fullText;
+        throw new Error('Gemini stream returned empty text');
+      } catch (streamErr: any) {
+        if (fullText.trim().length > 0) {
+          console.warn(`Gemini Streaming interrupted, returning ${fullText.length} partial chars.`, streamErr);
+          return fullText;
+        }
+        throw streamErr;
       }
-      if (fullText.trim()) return fullText;
-      throw new Error('Gemini stream returned empty text');
     } catch (e) {
       const limited = isRateLimitError(e);
       console.error(`Gemini Streaming Error (attempt ${attempt}/${maxAttempts}, model=${usingFallbackModel ? fallbackModel : primaryModel}, rate_limited=${limited}):`, e);
