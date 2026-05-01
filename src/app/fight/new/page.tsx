@@ -1,3 +1,4 @@
+// v2.1 — proposed time, importance, bot stance
 "use client";
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
