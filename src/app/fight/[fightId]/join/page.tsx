@@ -2,11 +2,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+const PERSONA_OPTIONS = [
+  { value: 'ic', icon: '🧑‍💻', label: 'SOLO IC', desc: 'Individual contributor. Protecting my deep work.' },
+  { value: 'team_lead', icon: '👥', label: 'TEAM LEAD', desc: 'I manage a small team. Calendar is busy.' },
+  { value: 'director', icon: '🏢', label: 'DIRECTOR', desc: 'Multiple teams. My time is expensive.' },
+  { value: 'executive', icon: '🎯', label: 'EXECUTIVE', desc: 'C-Suite / VP. Extremely limited availability.' },
+];
+
 export default function JoinFight({ params }: { params: { fightId: string } }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [stance, setStance] = useState<'accept' | 'avoid'>('accept');
+  const [persona, setPersona] = useState('ic');
   const [needsAuth, setNeedsAuth] = useState(false);
 
   const handleAuth = () => {
@@ -17,7 +25,7 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
   // Try to auto-join if already logged in
   useEffect(() => {
     const checkSession = async () => {
-      const res = await fetch(`/api/fight/${params.fightId}/join`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stance }) });
+      const res = await fetch(`/api/fight/${params.fightId}/join`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stance, opponentPersona: persona }) });
       if (res.ok) {
         router.push(`/fight/${params.fightId}/tape`);
       } else if (res.status === 401) {
@@ -33,7 +41,7 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
   const handleJoin = async () => {
     if (needsAuth) { handleAuth(); return; }
     setLoading(true);
-    const res = await fetch(`/api/fight/${params.fightId}/join`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stance }) });
+    const res = await fetch(`/api/fight/${params.fightId}/join`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stance, opponentPersona: persona }) });
     if (res.ok) {
       router.push(`/fight/${params.fightId}/tape`);
     } else if (res.status === 401) {
@@ -54,6 +62,28 @@ export default function JoinFight({ params }: { params: { fightId: string } }) {
           <p className="text-red-500 font-bold mb-4 bg-red-900/20 p-4 border border-red-500">{error}</p>
         ) : (
           <>
+            {/* Bot Persona Selection */}
+            <div className="mb-6">
+              <label className="font-label-caps text-secondary text-xs uppercase mb-4 block tracking-widest">YOUR BOT PERSONA (WHO ARE YOU?)</label>
+              <div className="grid grid-cols-2 gap-3">
+                {PERSONA_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setPersona(opt.value)}
+                    className={`p-4 border-2 flex flex-col gap-1 text-left transition-all ${
+                      persona === opt.value ? 'border-primary bg-primary/10' : 'border-outline-variant'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{opt.icon}</span>
+                      <span className={`font-lexend font-black text-sm uppercase ${persona === opt.value ? 'text-primary' : 'text-white'}`}>{opt.label}</span>
+                    </div>
+                    <p className="text-[10px] text-outline-variant">{opt.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Bot Stance Selection */}
             <div className="mb-8">
               <label className="font-label-caps text-secondary text-xs uppercase mb-4 block tracking-widest">SET YOUR BOT'S NEGOTIATION STANCE</label>

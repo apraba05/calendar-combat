@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       description: body.description,
       proposedTime: body.proposedTime || undefined,
       importance: body.importance || 'medium',
+      challengerPersona: body.challengerPersona || 'ic',
     },
     status: 'waiting',
     transcript: [],

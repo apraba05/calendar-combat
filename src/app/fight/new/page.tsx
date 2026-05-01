@@ -1,4 +1,4 @@
-// v2.2 — removed urgency, improved duration picker
+// v2.3 — bot persona selector
 "use client";
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,12 +20,20 @@ const DURATION_OPTIONS = [
   { value: '120', label: '120', sublabel: 'Full session' },
 ];
 
+const PERSONA_OPTIONS = [
+  { value: 'ic', icon: '🧑‍💻', label: 'SOLO IC', desc: 'Individual contributor. Protecting deep work time.' },
+  { value: 'team_lead', icon: '👥', label: 'TEAM LEAD', desc: 'Manage a small team. Balance your calendar and your crew.' },
+  { value: 'director', icon: '🏢', label: 'DIRECTOR', desc: 'Run multiple teams. Your time is expensive.' },
+  { value: 'executive', icon: '🎯', label: 'EXECUTIVE', desc: 'C-Suite or VP. Your calendar is a scarce resource.' },
+];
+
 export default function NewFight() {
   const router = useRouter();
   const [subject, setSubject] = useState('');
   const [duration, setDuration] = useState('30');
   const [proposedTime, setProposedTime] = useState('');
   const [importance, setImportance] = useState('medium');
+  const [persona, setPersona] = useState('ic');
   const [loading, setLoading] = useState(false);
   const [fightId, setFightId] = useState('');
   const [fightUrl, setFightUrl] = useState('');
@@ -44,7 +52,7 @@ export default function NewFight() {
     const res = await fetch('/api/fight/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, durationMinutes: duration, urgency: 'this_week', description: '', proposedTime, importance })
+      body: JSON.stringify({ subject, durationMinutes: duration, urgency: 'this_week', description: '', proposedTime, importance, challengerPersona: persona })
     });
     
     if (res.status === 401) {
@@ -129,11 +137,37 @@ export default function NewFight() {
           </div>
           
           <div>
+            <label className="font-label-caps text-primary text-xs uppercase mb-3 block">YOUR BOT PERSONA</label>
+            <div className="grid grid-cols-2 gap-3">
+              {PERSONA_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPersona(opt.value)}
+                  className={`border-2 p-4 flex flex-col gap-2 text-left transition-all hover:border-white ${
+                    persona === opt.value
+                      ? 'border-primary bg-primary/10'
+                      : 'border-outline-variant'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{opt.icon}</span>
+                    <span className={`font-lexend font-black text-sm uppercase ${persona === opt.value ? 'text-primary' : 'text-white'}`}>{opt.label}</span>
+                  </div>
+                  <p className="text-[11px] text-outline-variant leading-snug">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">YOUR POSITION SHAPES HOW YOUR BOT ARGUES AND NEGOTIATES.</p>
+          </div>
+
+          <div>
             <label className="font-label-caps text-primary text-xs uppercase mb-3 block">MEETING IMPORTANCE</label>
             <div className="grid grid-cols-4 gap-2">
               {IMPORTANCE_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
+                  type="button"
                   onClick={() => setImportance(opt.value)}
                   className={`border-2 p-3 flex flex-col items-center gap-1 transition-all ${importance === opt.value ? opt.color + ' bg-white/5' : 'border-outline-variant text-outline-variant'}`}
                 >
@@ -142,8 +176,9 @@ export default function NewFight() {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">HIGHER IMPORTANCE = YOUR BOT FIGHTS HARDER AND REFUSES TO ACCEPT A WALKAWAY.</p>
+            <p className="text-[10px] text-outline-variant mt-1 font-label-caps">HIGHER IMPORTANCE = YOUR BOT FIGHTS HARDER.</p>
           </div>
+
 
           <div>
             <label className="font-label-caps text-primary text-xs uppercase mb-3 block">MEETING DURATION</label>

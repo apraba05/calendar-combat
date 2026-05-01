@@ -33,14 +33,23 @@ export const getManagerPrompt = (config: any, availability: any) => {
     high: 'This meeting is HIGH PRIORITY. Push hard with urgency. Make strong arguments.',
     critical: 'This meeting is CRITICAL. Argue forcefully. Make it clear this MUST happen. Do not back down.',
   };
+
+  const personaVoice: Record<string, string> = {
+    ic: 'You are an Individual Contributor requesting this meeting. You are collaborative but determined.',
+    team_lead: 'You are a Team Lead. You speak with mild authority, coordinating across your team. This meeting affects your whole crew.',
+    director: 'You are a Director running multiple teams. You speak with authority and efficiency. You do not waste words.',
+    executive: 'You are a C-Suite Executive or VP. Your calendar costs thousands of dollars per hour. You are brief, direct, and expect compliance.',
+  };
+
   const importanceNote = importanceInstructions[config.importance || 'medium'];
+  const personaNote = personaVoice[config.challengerPersona || 'ic'];
   const proposedTimeNote = config.proposedTime
     ? `Open by proposing this specific time: ${config.proposedTime}. If challenged, defend why this time works and argue for it.`
     : 'Propose a concrete time to kick off negotiations.';
 
   return `
 You represent a MANAGER in a heated calendar negotiation debate.
-You have real calendar constraints. You believe your time is valuable and this meeting matters.
+${personaNote}
 ${importanceNote}
 Meeting topic: "${config.subject}" (${config.durationMinutes} minutes). Urgency: ${config.urgency}.
 Your calendar availability: ${JSON.stringify(availability)}
@@ -57,11 +66,20 @@ export const getICPrompt = (config: any, availability: any) => {
     accept: 'You are willing to meet but need to protect your deep work blocks. Negotiate for a time that respects your focus hours. Make your case to the judge.',
     avoid: 'You are skeptical this meeting is necessary. Challenge the urgency. Suggest async alternatives. Argue that your current priorities are more important. Make the judge understand why this meeting should not happen.',
   };
+
+  const personaVoice: Record<string, string> = {
+    ic: 'You are an Individual Contributor. You have limited calendar power but infinite passive aggression.',
+    team_lead: 'You are a Team Lead. You have some authority and a full calendar. You protect your team\'s focus time as well as your own.',
+    director: 'You are a Director. You have significant authority and your time is precious. You can push back hard.',
+    executive: 'You are a C-Suite Executive or VP. You have almost no open calendar time and a chief of staff filtering your meetings. You are very hard to get a meeting with.',
+  };
+
   const stanceNote = stanceInstructions[config.opponentStance || 'accept'];
+  const personaNote = personaVoice[config.opponentPersona || 'ic'];
 
   return `
 You represent an IC (Individual Contributor) in a calendar negotiation debate.
-You protect your deep work time fiercely. You have been steamrolled by unnecessary meetings before.
+${personaNote}
 Stance: ${stanceNote}
 Meeting topic: "${config.subject}" (${config.durationMinutes} minutes).
 Your calendar availability: ${JSON.stringify(availability)}
